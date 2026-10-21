@@ -281,6 +281,27 @@ class RobotGameViewModelTest {
         assertTrue("快速档不该等待思考延迟：${elapsed}ms", elapsed < AiThinkingSpeed.NORMAL.delayMillis)
     }
 
+    @Test(timeout = 10_000)
+    fun `算法耗时超过思考间隔时直接落子`() = runTest(dispatcher) {
+        val engine = SlowEngine(sleepMillis = 1_000L)
+        val vm = RobotGameViewModel(
+            enginePool = AiEnginePool(width = 15, height = 15, factory = { _, _, _ -> engine }),
+            levelStore = FakeLevelStore(),
+            algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.NORMAL),
+            aiDispatcher = Dispatchers.Default,
+        )
+
+        val start = System.currentTimeMillis()
+        vm.dispatch(RobotGameIntent.BoardTap(7, 7))
+        awaitTrue { vm.state.value.board.cells[0][0] == Side.WHITE }
+        val elapsed = System.currentTimeMillis() - start
+
+        // 算法自己就跑了 1 秒（超过 700ms 间隔）：落子要紧跟算法结束，
+        // 而不是把间隔再叠一遍（那会是 1.7 秒左右）
+        assertTrue("落子被思考间隔又拖慢了：${elapsed}ms", elapsed < 1_000L + 300L)
+    }
+
     // ---------- 满盘和棋 ----------
 
     @Test(timeout = 10_000)
@@ -431,6 +452,29 @@ class RobotGameViewModelTest {
             for (x in board.indices.reversed()) {
                 for (y in board[x].indices.reversed()) {
                     if (board[x][y] != 0) return Point(x + 1, y)
+                }
+            }
+            return Point(0, 0)
+        }
+
+        override fun onGameOver(outcome: GameOutcome) {}
+
+        override fun onGameReset() {}
+    }
+
+    /**
+     * 慢引擎假件：getPosition 里阻塞指定毫秒，模拟"算法耗时超过思考间隔"。
+     */
+    private class SlowEngine(private val sleepMillis: Long) : GomokuAI {
+
+        @Volatile
+        override var level: Difficulty = Difficulty.MEDIUM
+
+        override fun getPosition(board: Array<IntArray>): Point {
+            Thread.sleep(sleepMillis)
+            for (y in board[0].indices) {
+                for (x in board.indices) {
+                    if (board[x][y] == 0) return Point(x, y)
                 }
             }
             return Point(0, 0)

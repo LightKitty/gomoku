@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
  * - AI 思考期间请求悔棋，先记 [pendingRollback]，等 AI 落子后一并回退两子（对齐旧版 isRollback 语义）
  * - AI 思考期间改算法，先记 [pendingAlgorithm]，等本次落子落地后再换引擎，任一时刻只有一个引擎在跑
  * - 思考期间重开棋局时，过期的 AI 落子按轮次校验丢弃
- * - 落子前按 [thinkingSpeed] 等待一段时间再开始搜索：机器不会人刚落子就秒回，且不影响棋力
+ * - 落子时刻受 [thinkingSpeed] 约束：max(思考间隔, 算法耗时)；算法本身慢过间隔时直接落子，不影响棋力
  */
 class RobotGameViewModel(
     private val engine: GameEngine = GameEngine(),
@@ -148,11 +148,15 @@ class RobotGameViewModel(
         val token = generation
         // 思考速度同样在主线程取好：等待期间可能被改，下一手才用新值
         val waitMillis = thinkingSpeed.delayMillis
+        // 起点取自对手落子那一刻：落子时刻 = max(思考间隔, 算法耗时)
+        val startNanos = System.nanoTime()
         viewModelScope.launch(aiDispatcher) {
-            // 思考延迟：先等一会儿再算，让机器看起来在想，而不是人刚落子就秒回。
-            // 等待期间棋盘可能已重开，后面的代数校验会把过期着法丢掉。
-            if (waitMillis > 0) delay(waitMillis)
+            // 先算，算完再补足剩下的思考间隔：
+            // 算法本身耗时超过间隔时不再额外等待，直接落子。
             val point = instance.getPosition(board)
+            val elapsedMillis = (System.nanoTime() - startNanos) / NANOS_PER_MILLI
+            val remain = AiThinkingSpeed.remainingDelay(waitMillis, elapsedMillis)
+            if (remain > 0) delay(remain)
             withContext(Dispatchers.Main.immediate) {
                 aiThinking = false
                 pendingAlgorithm?.let {
@@ -249,6 +253,7 @@ class RobotGameViewModel(
         const val BOARD_SIZE = 15
         const val ROLLBACK_STEPS = 2
         const val EMPTY_CODE = 0
+        const val NANOS_PER_MILLI = 1_000_000L
         val AI_SIDE = Side.WHITE
     }
 }
