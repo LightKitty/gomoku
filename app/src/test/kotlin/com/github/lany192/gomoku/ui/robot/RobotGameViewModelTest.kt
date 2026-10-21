@@ -42,6 +42,12 @@ class RobotGameViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
 
+    /** 快档的上限：落子应紧跟算法结束，远早于标准档的 1 秒 */
+    private val FAST_MAX_ELAPSED_MILLIS = 500L
+
+    /** 假引擎耗时：稳稳超过标准档的 1 秒间隔 */
+    private val SLOW_ENGINE_MILLIS = 1_500L
+
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
@@ -278,12 +284,14 @@ class RobotGameViewModelTest {
         awaitTrue { vm.state.value.board.cells[0][0] == Side.WHITE }
 
         val elapsed = System.currentTimeMillis() - start
-        assertTrue("快速档不该等待思考延迟：${elapsed}ms", elapsed < AiThinkingSpeed.NORMAL.delayMillis)
+        // 快档不等待：落子应紧跟算法结束，远早于标准档的 1 秒
+        assertTrue("快速档不该等待思考延迟：${elapsed}ms", elapsed < FAST_MAX_ELAPSED_MILLIS)
     }
 
     @Test(timeout = 10_000)
     fun `算法耗时超过思考间隔时直接落子`() = runTest(dispatcher) {
-        val engine = SlowEngine(sleepMillis = 1_000L)
+        // 假引擎跑 1.5 秒，稳稳超过标准档的 1 秒间隔
+        val engine = SlowEngine(sleepMillis = SLOW_ENGINE_MILLIS)
         val vm = RobotGameViewModel(
             enginePool = AiEnginePool(width = 15, height = 15, factory = { _, _, _ -> engine }),
             levelStore = FakeLevelStore(),
@@ -297,9 +305,12 @@ class RobotGameViewModelTest {
         awaitTrue { vm.state.value.board.cells[0][0] == Side.WHITE }
         val elapsed = System.currentTimeMillis() - start
 
-        // 算法自己就跑了 1 秒（超过 700ms 间隔）：落子要紧跟算法结束，
-        // 而不是把间隔再叠一遍（那会是 1.7 秒左右）
-        assertTrue("落子被思考间隔又拖慢了：${elapsed}ms", elapsed < 1_000L + 300L)
+        // 算法自己就跑了 1.5 秒（超过 1 秒间隔）：落子要紧跟算法结束，
+        // 而不是把间隔再叠一遍（那会是 2.5 秒左右）
+        assertTrue(
+            "落子被思考间隔又拖慢了：${elapsed}ms",
+            elapsed < SLOW_ENGINE_MILLIS + 300L,
+        )
     }
 
     // ---------- 满盘和棋 ----------

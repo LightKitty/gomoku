@@ -3,6 +3,7 @@ package com.github.lany192.gomoku.ui.robot
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.lany192.gomoku.R
@@ -14,7 +15,7 @@ import com.github.lany192.gomoku.domain.ai.Difficulty
 import com.github.lany192.gomoku.ui.common.setupEdgeToEdge
 
 /**
- * 对手设置：难度单选 + 思考速度单选 + 算法分组列表。
+ * 对手设置：难度单选 + 速度单选 + 算法分组列表（**默认折叠**，点标题行展开）。
  *
  * 任何返回路径（返回键/返回箭头）都带结果 finish，由对局页负责落库与生效；
  * 本页不写持久化，避免"看着改了其实没应用"的两份真相。
@@ -44,6 +45,30 @@ class AiSelectActivity : AppCompatActivity() {
         adapter = AiSelectAdapter(onSelected = { algorithm = it }, selected = algorithm)
         binding.list.layoutManager = LinearLayoutManager(this)
         binding.list.adapter = adapter
+        setupAlgorithmSection()
+    }
+
+    /**
+     * 算法部分默认折叠：25 个算法是进阶选项，默认只留难度与速度两档常用设置。
+     * 标题行可点，展开后再看到带对勾的完整列表。
+     */
+    private fun setupAlgorithmSection() {
+        binding.algorithmHeader.setOnClickListener { toggleAlgorithmList() }
+        // 初始为折叠态（布局里 RecyclerView 默认 gone），箭头朝下表示"点开"
+        binding.algorithmArrow.rotation = COLLAPSED_ANGLE
+    }
+
+    private fun toggleAlgorithmList() {
+        val expanded = binding.list.visibility == View.VISIBLE
+        setAlgorithmListExpanded(!expanded)
+    }
+
+    private fun setAlgorithmListExpanded(expanded: Boolean) {
+        binding.list.visibility = if (expanded) View.VISIBLE else View.GONE
+        binding.algorithmArrow.animate()
+            .rotation(if (expanded) EXPANDED_ANGLE else COLLAPSED_ANGLE)
+            .setDuration(ARROW_ANIM_MILLIS)
+            .start()
     }
 
     override fun finish() {
@@ -108,6 +133,11 @@ class AiSelectActivity : AppCompatActivity() {
         const val EXTRA_ALGORITHM = "ai_algorithm"
         const val EXTRA_LEVEL = "ai_level"
         const val EXTRA_THINKING_SPEED = "ai_thinking_speed"
+
+        /** 折叠态箭头朝下（可点开），展开态朝上（可收起） */
+        private const val COLLAPSED_ANGLE = 90f
+        private const val EXPANDED_ANGLE = 270f
+        private const val ARROW_ANIM_MILLIS = 150L
 
         fun intent(
             context: Context,

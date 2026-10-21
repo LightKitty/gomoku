@@ -12,11 +12,11 @@ enum class AiThinkingSpeed(val delayMillis: Long) {
     /** 立即落子，给追求对局节奏的玩家 */
     FAST(0L),
 
-    /** 默认档：略作停顿，观感接近真人思考 */
-    NORMAL(700L),
+    /** 默认档：略作停顿，观感接近真人思考（1 秒） */
+    NORMAL(1000L),
 
-    /** 慢速：能明显看出机器在"想" */
-    SLOW(1800L);
+    /** 慢速：能明显看出机器在"想"（3 秒） */
+    SLOW(3000L);
 
     companion object {
         /** 未设置过思考速度时的默认档 */

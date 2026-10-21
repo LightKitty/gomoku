@@ -122,9 +122,9 @@ class RobotGameActivity : AppCompatActivity() {
         }
         binding.blackWin.text = state.blackWins.toString()
         binding.whiteWin.text = state.whiteWins.toString()
+        // 默认不展示算法名：算法是进阶选项，默认用经典棋型评分就够
         binding.opponentSummary.text = getString(
-            R.string.algorithm_difficulty_format,
-            getString(algorithmNameRes(state.aiAlgorithm)),
+            R.string.level_speed_format,
             getString(levelNameRes(state.aiLevel)),
             getString(thinkingSpeedNameRes(state.thinkingSpeed)),
         )

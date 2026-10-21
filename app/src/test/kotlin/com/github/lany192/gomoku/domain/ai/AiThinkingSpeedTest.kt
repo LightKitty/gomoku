@@ -13,16 +13,18 @@ class AiThinkingSpeedTest {
 
     @Test
     fun `算法很快时补足到思考间隔`() {
-        assertEquals(700L, AiThinkingSpeed.remainingDelay(700L, 0L))
-        assertEquals(650L, AiThinkingSpeed.remainingDelay(700L, 50L))
-        assertEquals(1L, AiThinkingSpeed.remainingDelay(700L, 699L))
+        val wait = AiThinkingSpeed.NORMAL.delayMillis
+        assertEquals(wait, AiThinkingSpeed.remainingDelay(wait, 0L))
+        assertEquals(wait - 50L, AiThinkingSpeed.remainingDelay(wait, 50L))
+        assertEquals(1L, AiThinkingSpeed.remainingDelay(wait, wait - 1L))
     }
 
     @Test
     fun `算法耗时超过间隔时直接落子`() {
-        assertEquals(0L, AiThinkingSpeed.remainingDelay(700L, 700L))
-        assertEquals(0L, AiThinkingSpeed.remainingDelay(700L, 1200L))
-        assertEquals(0L, AiThinkingSpeed.remainingDelay(700L, 5000L))
+        val wait = AiThinkingSpeed.NORMAL.delayMillis
+        assertEquals(0L, AiThinkingSpeed.remainingDelay(wait, wait))
+        assertEquals(0L, AiThinkingSpeed.remainingDelay(wait, wait + 500L))
+        assertEquals(0L, AiThinkingSpeed.remainingDelay(wait, 5000L))
     }
 
     @Test
@@ -34,6 +36,7 @@ class AiThinkingSpeedTest {
     @Test
     fun `默认档是标准`() {
         assertEquals(AiThinkingSpeed.NORMAL, AiThinkingSpeed.DEFAULT)
-        assertEquals(700L, AiThinkingSpeed.DEFAULT.delayMillis)
+        assertEquals(1000L, AiThinkingSpeed.DEFAULT.delayMillis)
+        assertEquals(3000L, AiThinkingSpeed.SLOW.delayMillis)
     }
 }
