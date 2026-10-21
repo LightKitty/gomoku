@@ -24,8 +24,10 @@ android {
         applicationId = "com.github.lany192.gomoku"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        // 与 GitHub Release 的 tag 一一对应：发 v1.0.N 就用 versionCode = N、versionName = "1.0.N"
+        // versionCode 必须递增，否则系统会把新包判成降级直接拒装
+        versionCode = 5
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

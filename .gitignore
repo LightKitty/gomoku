@@ -9,3 +9,6 @@ local.properties
 /.*
 # 例外：GitHub Actions 工作流必须入库，否则 CI 不会生效
 !/.github/
+
+# 构建产物：Release APK 由 CI 挂到 GitHub Releases 上，不进仓库
+*.apk
