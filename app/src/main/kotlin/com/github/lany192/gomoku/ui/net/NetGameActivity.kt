@@ -21,7 +21,7 @@ import com.github.lany192.gomoku.data.net.LanGameClient
 import com.github.lany192.gomoku.databinding.GameNetBinding
 import com.github.lany192.gomoku.domain.model.GameMode
 import com.github.lany192.gomoku.domain.model.Side
-import com.github.lany192.gomoku.ui.common.GameResultSheet
+import com.github.lany192.gomoku.ui.common.GameResultOverlay
 import com.github.lany192.gomoku.ui.common.TurnCountdown
 import com.github.lany192.gomoku.ui.common.setupEdgeToEdge
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -38,8 +38,8 @@ class NetGameActivity : AppCompatActivity() {
     private var rollbackDialog: AlertDialog? = null
     private var drawDialog: AlertDialog? = null
 
-    /** 终局结果面板：贴底弹出，不占对局页布局，棋盘不会位移 */
-    private var resultSheet: GameResultSheet? = null
+    /** 终局结果浮层：浮动在棋盘中部偏上，不占对局页布局，棋盘不会位移 */
+    private var resultOverlay: GameResultOverlay? = null
 
     /** 当前已展示的终局结果标识，避免状态重复渲染时反复弹面板 */
     private var resultKey: String? = null
@@ -104,16 +104,16 @@ class NetGameActivity : AppCompatActivity() {
         binding.fail.setOnClickListener {
             viewModel.dispatch(NetGameIntent.ResignClicked)
         }
-        resultSheet = GameResultSheet(this) {
+        resultOverlay = GameResultOverlay(this, binding.gameView) {
             viewModel.dispatch(NetGameIntent.RestartClicked)
         }
         observeViewModel()
     }
 
     override fun onDestroy() {
-        // 面板持有 Activity 上下文，必须先收起再销毁，避免窗口泄漏
-        resultSheet?.dismiss()
-        resultSheet = null
+        // 浮层持有 Activity 上下文，必须先收起再销毁，避免窗口泄漏
+        resultOverlay?.dismiss()
+        resultOverlay = null
         super.onDestroy()
     }
 
@@ -174,13 +174,13 @@ class NetGameActivity : AppCompatActivity() {
         }
         if (headline == null) {
             resultKey = null
-            resultSheet?.dismiss()
+            resultOverlay?.dismiss()
             return
         }
         val key = "$headline#${state.blackWins}#${state.whiteWins}"
         if (key == resultKey) return
         resultKey = key
-        resultSheet?.show(
+        resultOverlay?.show(
             headline = headline,
             // 只有五连胜才有高亮棋型可指；认输/超时终局不给这句提示
             subtitle = if (state.board.winLine.isNotEmpty()) {

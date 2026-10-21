@@ -21,7 +21,7 @@ import com.github.lany192.gomoku.data.settings.SharedPrefsAiThinkingSpeedStore
 import com.github.lany192.gomoku.databinding.GameSingleBinding
 import com.github.lany192.gomoku.domain.ai.AiEnginePool
 import com.github.lany192.gomoku.domain.model.Side
-import com.github.lany192.gomoku.ui.common.GameResultSheet
+import com.github.lany192.gomoku.ui.common.GameResultOverlay
 import com.github.lany192.gomoku.ui.common.setupEdgeToEdge
 import kotlinx.coroutines.launch
 
@@ -31,8 +31,8 @@ import kotlinx.coroutines.launch
 class RobotGameActivity : AppCompatActivity() {
     private lateinit var binding: GameSingleBinding
 
-    /** 终局结果面板：贴底弹出，不占对局页布局，棋盘不会位移 */
-    private var resultSheet: GameResultSheet? = null
+    /** 终局结果浮层：浮动在棋盘中部偏上，不占对局页布局，棋盘不会位移 */
+    private var resultOverlay: GameResultOverlay? = null
 
     /** 当前已展示的终局结果标识，避免状态重复渲染时反复弹面板 */
     private var resultKey: String? = null
@@ -90,16 +90,16 @@ class RobotGameActivity : AppCompatActivity() {
                 AiSelectActivity.intent(this, state.aiAlgorithm, state.aiLevel, state.thinkingSpeed)
             )
         }
-        resultSheet = GameResultSheet(this) {
+        resultOverlay = GameResultOverlay(this, binding.gameView) {
             viewModel.dispatch(RobotGameIntent.RestartClicked)
         }
         observeViewModel()
     }
 
     override fun onDestroy() {
-        // 面板持有 Activity 上下文，必须先收起再销毁，避免窗口泄漏
-        resultSheet?.dismiss()
-        resultSheet = null
+        // 浮层持有 Activity 上下文，必须先收起再销毁，避免窗口泄漏
+        resultOverlay?.dismiss()
+        resultOverlay = null
         super.onDestroy()
     }
 
@@ -146,13 +146,13 @@ class RobotGameActivity : AppCompatActivity() {
         }
         if (headline == null) {
             resultKey = null
-            resultSheet?.dismiss()
+            resultOverlay?.dismiss()
             return
         }
         val key = "$headline#${state.blackWins}#${state.whiteWins}"
         if (key == resultKey) return
         resultKey = key
-        resultSheet?.show(
+        resultOverlay?.show(
             headline = headline,
             subtitle = if (state.board.winLine.isNotEmpty()) {
                 getString(R.string.game_result_hint_five)
