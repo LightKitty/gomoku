@@ -145,6 +145,9 @@ class GameBoardView @JvmOverloads constructor(
             if (state != null && cellSize > 0) {
                 drawStones(canvas, state)
                 drawWinLine(canvas, state)
+                // 最后一手标记必须画在最上层：五连高亮会从首子连到末子，
+                // 那条连线正好从中间几颗子的中心穿过，会盖掉最后一手的中心标记
+                drawLastMove(canvas, state)
             }
             drawFocus(canvas)
         } finally {
@@ -201,15 +204,17 @@ class GameBoardView @JvmOverloads constructor(
                 }
             }
         }
-        // 最新落子高亮
-        state.lastMove?.let { last ->
-            val bitmap = when (state.cells[last.x][last.y]) {
-                Side.BLACK -> blackLastBitmap
-                Side.WHITE -> whiteLastBitmap
-                null -> null
-            }
-            bitmap?.let { canvas.drawBitmap(it, (last.x * cellSize).toFloat(), (last.y * cellSize).toFloat(), chessPaint) }
+    }
+
+    /** 最新落子高亮：整颗子重画一次，中心带加大标记点 */
+    private fun drawLastMove(canvas: Canvas, state: BoardRenderState) {
+        val last = state.lastMove ?: return
+        val bitmap = when (state.cells[last.x][last.y]) {
+            Side.BLACK -> blackLastBitmap
+            Side.WHITE -> whiteLastBitmap
+            null -> null
         }
+        bitmap?.let { canvas.drawBitmap(it, (last.x * cellSize).toFloat(), (last.y * cellSize).toFloat(), chessPaint) }
     }
 
     private fun drawWinLine(canvas: Canvas, state: BoardRenderState) {

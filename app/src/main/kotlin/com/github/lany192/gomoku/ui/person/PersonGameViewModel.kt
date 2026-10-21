@@ -80,7 +80,7 @@ class PersonGameViewModel(
                     turn.stop()
                 }
                 GameEvent.Draw -> {
-                    // 满盘和棋：双方均不加胜场，横幅走「双方和棋」
+                    // 满盘和棋：双方均不加胜场，结果面板走「双方和棋」
                     winLine = emptyList()
                     winner = null
                     timedOut = false

@@ -23,12 +23,12 @@ sealed interface NetGameIntent {
     data object ResignConfirmed : NetGameIntent
 }
 
-/** 终局结果（含引擎五连胜与求和/认输/超时宣告，横幅随状态幂等渲染，不用弹窗） */
+/** 终局结果（含引擎五连胜与求和/认输/超时宣告，由底部结果面板呈现） */
 sealed interface NetGameEnd {
     data class Win(val winner: Side) : NetGameEnd
     data object Draw : NetGameEnd
 
-    /** 每步限时归零判负，区别于五连的 [Win]，仅影响横幅文案 */
+    /** 每步限时归零判负，区别于五连的 [Win]，仅影响结果文案 */
     data class Timeout(val winner: Side) : NetGameEnd
 }
 

@@ -21,6 +21,7 @@ import com.github.lany192.gomoku.data.net.LanGameClient
 import com.github.lany192.gomoku.databinding.GameNetBinding
 import com.github.lany192.gomoku.domain.model.GameMode
 import com.github.lany192.gomoku.domain.model.Side
+import com.github.lany192.gomoku.ui.common.GameResultSheet
 import com.github.lany192.gomoku.ui.common.TurnCountdown
 import com.github.lany192.gomoku.ui.common.setupEdgeToEdge
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -36,6 +37,12 @@ class NetGameActivity : AppCompatActivity() {
     private var waitDialog: AlertDialog? = null
     private var rollbackDialog: AlertDialog? = null
     private var drawDialog: AlertDialog? = null
+
+    /** 终局结果面板：贴底弹出，不占对局页布局，棋盘不会位移 */
+    private var resultSheet: GameResultSheet? = null
+
+    /** 当前已展示的终局结果标识，避免状态重复渲染时反复弹面板 */
+    private var resultKey: String? = null
 
     /** 记分卡下方的倒计时常态色，用于从警告色复位 */
     private var countdownNormalColor = 0
@@ -97,7 +104,17 @@ class NetGameActivity : AppCompatActivity() {
         binding.fail.setOnClickListener {
             viewModel.dispatch(NetGameIntent.ResignClicked)
         }
+        resultSheet = GameResultSheet(this) {
+            viewModel.dispatch(NetGameIntent.RestartClicked)
+        }
         observeViewModel()
+    }
+
+    override fun onDestroy() {
+        // 面板持有 Activity 上下文，必须先收起再销毁，避免窗口泄漏
+        resultSheet?.dismiss()
+        resultSheet = null
+        super.onDestroy()
     }
 
     private fun observeViewModel() {
@@ -134,30 +151,46 @@ class NetGameActivity : AppCompatActivity() {
         binding.blackWin.text = state.blackWins.toString()
         binding.whiteWin.text = state.whiteWins.toString()
         renderCountdown(state.connected, state.remainingMillis)
-        when (val end = state.end) {
-            null -> binding.resultBanner.visibility = View.GONE
-            NetGameEnd.Draw -> {
-                binding.resultBanner.visibility = View.VISIBLE
-                binding.resultText.setText(R.string.msg_draw_end)
-            }
-            is NetGameEnd.Win -> {
-                binding.resultBanner.visibility = View.VISIBLE
-                binding.resultText.setText(
-                    if (end.winner == state.mySide) R.string.msg_i_won else R.string.msg_i_lost
-                )
-            }
-            is NetGameEnd.Timeout -> {
-                binding.resultBanner.visibility = View.VISIBLE
-                binding.resultText.setText(
-                    if (end.winner == state.mySide) R.string.msg_peer_timeout else R.string.msg_self_timeout
-                )
-            }
-        }
+        renderResult(state)
         // 终局期间作废待决协商：对话框可能正开着（超时/认输与协商撞在一起），幂等关闭
         if (state.end != null) {
             rollbackDialog?.dismiss()
             drawDialog?.dismiss()
         }
+    }
+
+    /**
+     * 终局结果：贴底弹出面板，**不占用棋盘位置**，棋盘不会因结果出现而位移。
+     * 非终局（重开解除终局）时收起面板。
+     */
+    private fun renderResult(state: NetGameState) {
+        val headline = when (val end = state.end) {
+            null -> null
+            NetGameEnd.Draw -> getString(R.string.msg_draw_end)
+            is NetGameEnd.Win ->
+                if (end.winner == state.mySide) getString(R.string.msg_i_won) else getString(R.string.msg_i_lost)
+            is NetGameEnd.Timeout ->
+                if (end.winner == state.mySide) getString(R.string.msg_peer_timeout) else getString(R.string.msg_self_timeout)
+        }
+        if (headline == null) {
+            resultKey = null
+            resultSheet?.dismiss()
+            return
+        }
+        val key = "$headline#${state.blackWins}#${state.whiteWins}"
+        if (key == resultKey) return
+        resultKey = key
+        resultSheet?.show(
+            headline = headline,
+            // 只有五连胜才有高亮棋型可指；认输/超时终局不给这句提示
+            subtitle = if (state.board.winLine.isNotEmpty()) {
+                getString(R.string.game_result_hint_five)
+            } else {
+                null
+            },
+            blackWins = state.blackWins,
+            whiteWins = state.whiteWins,
+        )
     }
 
     private fun renderCountdown(connected: Boolean, remainingMillis: Long) {

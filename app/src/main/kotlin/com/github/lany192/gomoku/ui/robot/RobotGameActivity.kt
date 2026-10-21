@@ -21,6 +21,7 @@ import com.github.lany192.gomoku.data.settings.SharedPrefsAiThinkingSpeedStore
 import com.github.lany192.gomoku.databinding.GameSingleBinding
 import com.github.lany192.gomoku.domain.ai.AiEnginePool
 import com.github.lany192.gomoku.domain.model.Side
+import com.github.lany192.gomoku.ui.common.GameResultSheet
 import com.github.lany192.gomoku.ui.common.setupEdgeToEdge
 import kotlinx.coroutines.launch
 
@@ -29,6 +30,12 @@ import kotlinx.coroutines.launch
  */
 class RobotGameActivity : AppCompatActivity() {
     private lateinit var binding: GameSingleBinding
+
+    /** 终局结果面板：贴底弹出，不占对局页布局，棋盘不会位移 */
+    private var resultSheet: GameResultSheet? = null
+
+    /** 当前已展示的终局结果标识，避免状态重复渲染时反复弹面板 */
+    private var resultKey: String? = null
     private val viewModel: RobotGameViewModel by viewModels {
         viewModelFactory {
             initializer {
@@ -83,7 +90,17 @@ class RobotGameActivity : AppCompatActivity() {
                 AiSelectActivity.intent(this, state.aiAlgorithm, state.aiLevel, state.thinkingSpeed)
             )
         }
+        resultSheet = GameResultSheet(this) {
+            viewModel.dispatch(RobotGameIntent.RestartClicked)
+        }
         observeViewModel()
+    }
+
+    override fun onDestroy() {
+        // 面板持有 Activity 上下文，必须先收起再销毁，避免窗口泄漏
+        resultSheet?.dismiss()
+        resultSheet = null
+        super.onDestroy()
     }
 
     private fun observeViewModel() {
@@ -111,18 +128,40 @@ class RobotGameActivity : AppCompatActivity() {
             getString(levelNameRes(state.aiLevel)),
             getString(thinkingSpeedNameRes(state.thinkingSpeed)),
         )
-        val winner = state.winner
-        val showBanner = winner != null || state.drawn
-        binding.resultBanner.visibility = if (showBanner) View.VISIBLE else View.GONE
-        if (showBanner) {
-            binding.resultText.setText(
-                when {
-                    state.drawn -> R.string.msg_draw_end
-                    winner == Side.BLACK -> R.string.msg_black_win
-                    else -> R.string.msg_white_win
-                }
-            )
+        renderResult(state)
+    }
+
+    /**
+     * 终局结果：贴底弹出面板，**不占用棋盘位置**，棋盘不会因结果出现而位移。
+     * 非终局（悔棋/重开解除终局）时收起面板。
+     *
+     * 文案取玩家视角：人机对局里 AI 永远执白，所以黑方胜即玩家获胜。
+     */
+    private fun renderResult(state: RobotGameState) {
+        val headline = when {
+            state.drawn -> getString(R.string.msg_draw_end)
+            state.winner == Side.BLACK -> getString(R.string.game_result_player_win)
+            state.winner == Side.WHITE -> getString(R.string.game_result_ai_win)
+            else -> null
         }
+        if (headline == null) {
+            resultKey = null
+            resultSheet?.dismiss()
+            return
+        }
+        val key = "$headline#${state.blackWins}#${state.whiteWins}"
+        if (key == resultKey) return
+        resultKey = key
+        resultSheet?.show(
+            headline = headline,
+            subtitle = if (state.board.winLine.isNotEmpty()) {
+                getString(R.string.game_result_hint_five)
+            } else {
+                null
+            },
+            blackWins = state.blackWins,
+            whiteWins = state.whiteWins,
+        )
     }
 
     private companion object {

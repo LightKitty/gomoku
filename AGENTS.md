@@ -43,7 +43,8 @@ Android 五子棋应用，单 `app` 模块，100% Kotlin。手写 MVI（无 MVI 
 - `core/mvi/MviViewModel` —— 基类：Intent 经无限容量 `Channel` 串行处理（对齐旧 Handler 主线程队列语义）；State 是 `StateFlow`，渲染须幂等；Effect 是 `SharedFlow(replay=0)`，承载一次性 toast/弹窗/导航。每个特性在 `ui/<feature>/` 下含 `<Feature>Contract.kt`（Intent/State/Effect）、`<Feature>ViewModel.kt`、`<Feature>Activity.kt`。例外是 `ui/net/`：联机对局页与对局 ViewModel 由局域网和蓝牙共用，不是单一特性。
 - `data/net/` —— `Protocol.kt`（字节级编解码 + `TcpFrameReader`）、`LanDiscoveryManager`（UDP 发现/握手/聊天）、`LanGameClient`（TCP 对局）、`HeartbeatMonitor`（纯 Kotlin 心跳/假死检测，局域网与蓝牙共用）、`GameTransport`（对局传输抽象，`ui/net` 唯一依赖的建连接口）。阻塞式 `DatagramSocket.receive()` / `Socket.read()` 不响应协程取消 —— 须先关闭 socket 再取消 scope 来停止。
 - `data/bt/` —— `BtDiscoveryManager`（已配对列表 + 系统发现广播 + RFCOMM 握手）、`BtGameClient`（RFCOMM 对局，实现 `GameTransport`）。`accept()`/`read()` 同样靠关闭 socket 打断。`BtDiscoveryManager` 是一次性的：`stop()` 会取消 scope，不可复用。
-- `ui/common/GameBoardView` —— SurfaceView 棋盘；`render(state)` 是唯一渲染入口，`onCellTapped` 是唯一输入回调；自身不含任何对局逻辑。
+- `ui/common/GameBoardView` —— SurfaceView 棋盘；`render(state)` 是唯一渲染入口，`onCellTapped` 是唯一输入回调；自身不含任何对局逻辑。绘制层级为 棋子 → 胜利高亮 → **最后一手标记** → 焦点框，最后一手标记必须压在胜利高亮之上（高亮连线会从五连中间子的中心穿过）。
+- `ui/common/GameResultSheet` —— 终局结果底部面板，三人机/联机三处对局页共用。**终局结果不许再做成对局页布局里的横幅/占位 View**：那类节点 `gone → visible` 会把下方棋盘整块顶下去（棋盘位移）。面板挂在 Dialog 窗口上、贴底停住，不参与对局页布局；窗口遮罩透明度置 0，棋盘既不位移也不被压暗。
 
 ## 人机 AI（`domain/ai/`）
 

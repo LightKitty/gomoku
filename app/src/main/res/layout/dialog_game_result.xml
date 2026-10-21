@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  终局结果底部面板。
+  挂在 Dialog 窗口上、贴底停住，不参与对局页布局，因此棋盘不会因结果出现而位移。
+  面板刻意做得紧凑（小屏上别盖住棋盘底部几行）；不设拖拽把手、也不允许拖拽，
+  收起只走「收起」按钮、点棋盘区域或返回键。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/spacing_m"
+    android:paddingBottom="@dimen/spacing_s">
+
+    <TextView
+        android:id="@+id/result_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        tools:text="黑方胜！" />
+
+    <TextView
+        android:id="@+id/result_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        tools:text="棋盘上已高亮获胜的五连" />
+
+    <TextView
+        android:id="@+id/result_score"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        tools:text="本局比分　2 : 1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_s"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/result_collapse"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/game_result_collapse" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/result_again"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_s"
+            android:layout_weight="1"
+            android:text="@string/game_result_again" />
+    </LinearLayout>
+</LinearLayout>

@@ -14,11 +14,11 @@ data class PersonGameState(
     val active: Side = Side.BLACK,
     val blackWins: Int = 0,
     val whiteWins: Int = 0,
-    /** 终局胜方，null 表示对局进行中（横幅随状态幂等渲染，不用弹窗） */
+    /** 终局胜方，null 表示对局进行中（终局由底部结果面板呈现） */
     val winner: Side? = null,
-    /** 终局由超时判负产生，仅影响横幅文案 */
+    /** 终局由超时判负产生，仅影响结果文案 */
     val timedOut: Boolean = false,
-    /** 满盘和棋终局，仅影响横幅文案（胜方为 null，故需单列一位） */
+    /** 满盘和棋终局，仅影响结果文案（胜方为 null，故需单列一位） */
     val drawn: Boolean = false,
     /** 当前行棋方剩余毫秒；<= 0 表示不限时（倒计时关闭） */
     val remainingMillis: Long = 0,

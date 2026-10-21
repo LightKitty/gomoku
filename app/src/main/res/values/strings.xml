@@ -128,4 +128,11 @@
     <string name="msg_peer_timeout">对方超时判负，你赢了！</string>
     <string name="msg_self_timeout">你超时判负，很遗憾！</string>
     <string name="countdown_idle">--:--</string>
+    <!-- 终局结果底部面板 -->
+    <string name="game_result_again">再来一局</string>
+    <string name="game_result_collapse">收起</string>
+    <string name="game_result_score">本局比分　%1$d : %2$d</string>
+    <string name="game_result_hint_five">棋盘上已高亮获胜的五连</string>
+    <string name="game_result_player_win">你赢了！</string>
+    <string name="game_result_ai_win">电脑获胜</string>
 </resources>
