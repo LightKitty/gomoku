@@ -75,18 +75,85 @@ jobs:
       - name: 赋予 gradlew 可执行权限
         run: chmod +x ./gradlew
 
+      # 环境自检：把 JDK / SDK / 仓库网络可达性打成 annotation。
+      # GitHub 的完整 job 日志需要登录才能下载，annotation 匿名可读，是唯一免登录的诊断通道。
+      # 本步骤刻意不失败：诊断信息要拿到后，再由后面的构建步骤给出真实结论。
+      - name: 环境自检
+        run: |
+          set +e
+          JAVA_LINE="$(java -version 2>&1 | head -n1)"
+          PLATFORMS="$(ls "$ANDROID_HOME/platforms" 2>/dev/null | tr '\n' ' ')"
+          BUILD_TOOLS="$(ls "$ANDROID_HOME/build-tools" 2>/dev/null | tr '\n' ' ')"
+          {
+            echo "### 环境自检"
+            echo ""
+            echo "- java: \`$JAVA_LINE\`"
+            echo "- JAVA_HOME: \`${JAVA_HOME:-<空>}\`"
+            echo "- ANDROID_HOME: \`${ANDROID_HOME:-<空>}\`"
+            echo "- platforms: \`${PLATFORMS:-<空>}\`"
+            echo "- build-tools: \`${BUILD_TOOLS:-<空>}\`"
+            echo ""
+            echo "| 仓库 | HTTP |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice::java: $JAVA_LINE"
+          echo "::notice::ANDROID_HOME=$ANDROID_HOME"
+          echo "::notice::platforms: $PLATFORMS"
+          echo "::notice::build-tools: $BUILD_TOOLS"
+          for u in https://services.gradle.org/distributions/ https://maven.aliyun.com/repository/public/ https://dl.google.com/dl/android/maven2/ https://repo1.maven.org/maven2/ https://plugins.gradle.org/m2/; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -L "$u" 2>/dev/null)"
+            case "$code" in
+              200|301|302|403)
+                echo "::notice::网络可达 $u -> HTTP $code"
+                echo "| $u | $code |" >> "$GITHUB_STEP_SUMMARY"
+                ;;
+              *)
+                echo "::error::网络异常 $u -> HTTP ${code:-无响应}"
+                echo "| $u | ${code:-无响应} |" >> "$GITHUB_STEP_SUMMARY"
+                ;;
+            esac
+          done
+          # wrapper 自带下载能力：这里能验证 Gradle 发行包能否下载解压
+          ./gradlew --version > /tmp/gradle-version.log 2>&1
+          VSTATUS=$?
+          echo "::notice::gradlew --version 退出码: $VSTATUS"
+          cat /tmp/gradle-version.log
+          {
+            echo ""
+            echo '```'
+            cat /tmp/gradle-version.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          set -e
+
       # release 走 R8 + 字符串加密（buildSrc/EncryptStringsTask），签名用仓库内的 app/test.jks
-      # 失败时把日志尾部以 annotation 形式打出来，方便直接在 GitHub 上看到原因
+      # 失败时把日志以 annotation 形式打出来，方便直接在 GitHub 上看到原因。
+      # 注意：runner 默认 shell 带 errexit，失败管道会直接终止脚本，
+      # 所以必须先 set +e，再用 PIPESTATUS 取 Gradle 的真实退出码。
       - name: 构建 Release APK
         run: |
+          set +e
           set -o pipefail
-          ./gradlew assembleRelease 2>&1 | tee /tmp/gradle-build.log
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee /tmp/gradle-build.log
           status=${PIPESTATUS[0]}
+          set -e
           if [ "$status" -ne 0 ]; then
-            echo "::group::构建失败，日志尾部"
-            tail -n 40 /tmp/gradle-build.log
+            echo "::group::构建失败：Gradle 错误摘要"
+            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 40
             echo "::endgroup::"
-            tail -n 25 /tmp/gradle-build.log | while IFS= read -r line; do
+            echo "::group::构建失败：日志尾部"
+            tail -n 30 /tmp/gradle-build.log
+            echo "::endgroup::"
+            {
+              echo "### 构建失败"
+              echo ""
+              echo '```'
+              awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 40
+              tail -n 30 /tmp/gradle-build.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 20 | while IFS= read -r line; do
+              [ -z "$line" ] && continue
               esc=${line//'%'/'%25'}
               esc=${esc//$'\r'/'%0D'}
               echo "::error::${esc}"
@@ -188,16 +255,31 @@ jobs:
         run: chmod +x ./gradlew
 
       # 规则引擎 / AI / 协议字节冻结用例都在这里（domain/engine、domain/ai、data/net）
+      # 同样先 set +e：否则失败管道会在 errexit 下直接终止脚本，诊断块不会执行
       - name: 运行单元测试
         run: |
+          set +e
           set -o pipefail
-          ./gradlew :app:testDebugUnitTest 2>&1 | tee /tmp/gradle-test.log
+          ./gradlew :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle-test.log
           status=${PIPESTATUS[0]}
+          set -e
           if [ "$status" -ne 0 ]; then
-            echo "::group::测试失败，日志尾部"
-            tail -n 40 /tmp/gradle-test.log
+            echo "::group::测试失败：Gradle 错误摘要"
+            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 40
             echo "::endgroup::"
-            tail -n 25 /tmp/gradle-test.log | while IFS= read -r line; do
+            echo "::group::测试失败：日志尾部"
+            tail -n 30 /tmp/gradle-test.log
+            echo "::endgroup::"
+            {
+              echo "### 单元测试失败"
+              echo ""
+              echo '```'
+              awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 40
+              tail -n 30 /tmp/gradle-test.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 20 | while IFS= read -r line; do
+              [ -z "$line" ] && continue
               esc=${line//'%'/'%25'}
               esc=${esc//$'\r'/'%0D'}
               echo "::error::${esc}"
