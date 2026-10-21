@@ -76,8 +76,31 @@ jobs:
         run: chmod +x ./gradlew
 
       # release 走 R8 + 字符串加密（buildSrc/EncryptStringsTask），签名用仓库内的 app/test.jks
+      # 失败时把日志尾部以 annotation 形式打出来，方便直接在 GitHub 上看到原因
       - name: 构建 Release APK
-        run: ./gradlew assembleRelease
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease 2>&1 | tee /tmp/gradle-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::group::构建失败，日志尾部"
+            tail -n 40 /tmp/gradle-build.log
+            echo "::endgroup::"
+            tail -n 25 /tmp/gradle-build.log | while IFS= read -r line; do
+              esc=${line//'%'/'%25'}
+              esc=${esc//$'\r'/'%0D'}
+              echo "::error::${esc}"
+            done
+            exit "$status"
+          fi
+
+      - name: 上传构建日志（失败时也保留）
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gradle-build-log
+          path: /tmp/gradle-build.log
+          if-no-files-found: ignore
 
       - name: 收集产物
         run: |
@@ -166,4 +189,26 @@ jobs:
 
       # 规则引擎 / AI / 协议字节冻结用例都在这里（domain/engine、domain/ai、data/net）
       - name: 运行单元测试
-        run: ./gradlew :app:testDebugUnitTest
+        run: |
+          set -o pipefail
+          ./gradlew :app:testDebugUnitTest 2>&1 | tee /tmp/gradle-test.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::group::测试失败，日志尾部"
+            tail -n 40 /tmp/gradle-test.log
+            echo "::endgroup::"
+            tail -n 25 /tmp/gradle-test.log | while IFS= read -r line; do
+              esc=${line//'%'/'%25'}
+              esc=${esc//$'\r'/'%0D'}
+              echo "::error::${esc}"
+            done
+            exit "$status"
+          fi
+
+      - name: 上传测试日志（失败时也保留）
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gradle-test-log
+          path: /tmp/gradle-test.log
+          if-no-files-found: ignore
