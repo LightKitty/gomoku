@@ -46,9 +46,7 @@ class PersonGameActivity : AppCompatActivity() {
         binding.rollback.setOnClickListener {
             viewModel.dispatch(PersonGameIntent.RollbackClicked)
         }
-        resultOverlay = GameResultOverlay(this, binding.gameView) {
-            viewModel.dispatch(PersonGameIntent.RestartClicked)
-        }
+        resultOverlay = GameResultOverlay(this, binding.gameView)
         observeViewModel()
     }
 
@@ -83,8 +81,8 @@ class PersonGameActivity : AppCompatActivity() {
     }
 
     /**
-     * 终局结果：贴底弹出面板，**不占用棋盘位置**，棋盘不会因结果出现而位移。
-     * 非终局（悔棋/重开解除终局）时收起面板。
+     * 终局结果：**浮动结果浮层**，只显示一句结果文案，**不占用棋盘位置**，棋盘不会因结果出现而位移。
+     * 非终局（悔棋/重开解除终局）时收起浮层。
      */
     private fun renderResult(state: PersonGameState) {
         val headline = when {
@@ -100,20 +98,10 @@ class PersonGameActivity : AppCompatActivity() {
             resultOverlay?.dismiss()
             return
         }
-        val key = "$headline#${state.blackWins}#${state.whiteWins}"
-        if (key == resultKey) return
-        resultKey = key
-        resultOverlay?.show(
-            headline = headline,
-            subtitle = fiveLineHint(state),
-            blackWins = state.blackWins,
-            whiteWins = state.whiteWins,
-        )
+        if (headline == resultKey) return
+        resultKey = headline
+        resultOverlay?.show(headline)
     }
-
-    /** 只有五连胜才有高亮棋型可指，其余终局（超时/和棋）不给这句提示 */
-    private fun fiveLineHint(state: PersonGameState): String? =
-        if (state.board.winLine.isNotEmpty()) getString(R.string.game_result_hint_five) else null
 
     private fun renderCountdown(remainingMillis: Long) {
         binding.countdown.text = TurnCountdown.format(remainingMillis)

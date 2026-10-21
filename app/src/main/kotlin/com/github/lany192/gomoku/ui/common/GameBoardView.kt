@@ -143,11 +143,13 @@ class GameBoardView @JvmOverloads constructor(
             drawBoard(canvas)
             val state = renderState
             if (state != null && cellSize > 0) {
+                // 获胜连线沉在棋子下面：只从子与子的缝隙里露出来，不会把棋子拦腰截断
+                drawWinBar(canvas, state)
                 drawStones(canvas, state)
-                drawWinLine(canvas, state)
-                // 最后一手标记必须画在最上层：五连高亮会从首子连到末子，
-                // 那条连线正好从中间几颗子的中心穿过，会盖掉最后一手的中心标记
+                // 最后一手标记整颗重画（中心加大点），压在棋子之上
                 drawLastMove(canvas, state)
+                // 获胜红圈提到最上层：最后一手那颗子也盖不住自己的圈，五连标记始终完整
+                drawWinRings(canvas, state)
             }
             drawFocus(canvas)
         } finally {
@@ -217,15 +219,31 @@ class GameBoardView @JvmOverloads constructor(
         bitmap?.let { canvas.drawBitmap(it, (last.x * cellSize).toFloat(), (last.y * cellSize).toFloat(), chessPaint) }
     }
 
-    private fun drawWinLine(canvas: Canvas, state: BoardRenderState) {
+    /**
+     * 获胜连线：画在**棋子下面**。
+     *
+     * 连线从首子中心连到末子中心，棋子画在它上面，于是线只从子与子的缝隙里露出来，
+     * 既不会把棋子拦腰截断，也不会被某一颗子（尤其是整颗重画的最后一手）盖出一段缺口。
+     */
+    private fun drawWinBar(canvas: Canvas, state: BoardRenderState) {
         if (state.winLine.isEmpty()) return
-        val radius = cellSize / 2f - winPaint.strokeWidth
         val first = state.winLine.first()
         val last = state.winLine.last()
         canvas.drawLine(
             first.x * cellSize + cellSize / 2f, first.y * cellSize + cellSize / 2f,
             last.x * cellSize + cellSize / 2f, last.y * cellSize + cellSize / 2f, winPaint,
         )
+    }
+
+    /**
+     * 获胜红圈：画在**最上层**，每个获胜点一圈。
+     *
+     * 半径取 cellSize/2 − 线宽，正好套在棋子外沿形成一圈光晕；
+     * 放最上层是为了不被任何一颗子（含最后一手整颗重画）盖掉，五连高亮始终是完整的五圈。
+     */
+    private fun drawWinRings(canvas: Canvas, state: BoardRenderState) {
+        if (state.winLine.isEmpty()) return
+        val radius = cellSize / 2f - winPaint.strokeWidth
         state.winLine.forEach { point ->
             val cx = point.x * cellSize + cellSize / 2f
             val cy = point.y * cellSize + cellSize / 2f

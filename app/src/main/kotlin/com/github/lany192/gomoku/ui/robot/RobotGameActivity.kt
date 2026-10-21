@@ -90,9 +90,7 @@ class RobotGameActivity : AppCompatActivity() {
                 AiSelectActivity.intent(this, state.aiAlgorithm, state.aiLevel, state.thinkingSpeed)
             )
         }
-        resultOverlay = GameResultOverlay(this, binding.gameView) {
-            viewModel.dispatch(RobotGameIntent.RestartClicked)
-        }
+        resultOverlay = GameResultOverlay(this, binding.gameView)
         observeViewModel()
     }
 
@@ -132,8 +130,8 @@ class RobotGameActivity : AppCompatActivity() {
     }
 
     /**
-     * 终局结果：贴底弹出面板，**不占用棋盘位置**，棋盘不会因结果出现而位移。
-     * 非终局（悔棋/重开解除终局）时收起面板。
+     * 终局结果：**浮动结果浮层**，只显示一句结果文案，**不占用棋盘位置**，棋盘不会因结果出现而位移。
+     * 非终局（悔棋/重开解除终局）时收起浮层。
      *
      * 文案取玩家视角：人机对局里 AI 永远执白，所以黑方胜即玩家获胜。
      */
@@ -149,19 +147,9 @@ class RobotGameActivity : AppCompatActivity() {
             resultOverlay?.dismiss()
             return
         }
-        val key = "$headline#${state.blackWins}#${state.whiteWins}"
-        if (key == resultKey) return
-        resultKey = key
-        resultOverlay?.show(
-            headline = headline,
-            subtitle = if (state.board.winLine.isNotEmpty()) {
-                getString(R.string.game_result_hint_five)
-            } else {
-                null
-            },
-            blackWins = state.blackWins,
-            whiteWins = state.whiteWins,
-        )
+        if (headline == resultKey) return
+        resultKey = headline
+        resultOverlay?.show(headline)
     }
 
     private companion object {

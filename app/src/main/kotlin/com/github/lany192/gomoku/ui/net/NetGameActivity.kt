@@ -104,9 +104,7 @@ class NetGameActivity : AppCompatActivity() {
         binding.fail.setOnClickListener {
             viewModel.dispatch(NetGameIntent.ResignClicked)
         }
-        resultOverlay = GameResultOverlay(this, binding.gameView) {
-            viewModel.dispatch(NetGameIntent.RestartClicked)
-        }
+        resultOverlay = GameResultOverlay(this, binding.gameView)
         observeViewModel()
     }
 
@@ -160,8 +158,8 @@ class NetGameActivity : AppCompatActivity() {
     }
 
     /**
-     * 终局结果：贴底弹出面板，**不占用棋盘位置**，棋盘不会因结果出现而位移。
-     * 非终局（重开解除终局）时收起面板。
+     * 终局结果：**浮动结果浮层**，只显示一句结果文案，**不占用棋盘位置**，棋盘不会因结果出现而位移。
+     * 非终局（重开解除终局）时收起浮层。
      */
     private fun renderResult(state: NetGameState) {
         val headline = when (val end = state.end) {
@@ -177,20 +175,9 @@ class NetGameActivity : AppCompatActivity() {
             resultOverlay?.dismiss()
             return
         }
-        val key = "$headline#${state.blackWins}#${state.whiteWins}"
-        if (key == resultKey) return
-        resultKey = key
-        resultOverlay?.show(
-            headline = headline,
-            // 只有五连胜才有高亮棋型可指；认输/超时终局不给这句提示
-            subtitle = if (state.board.winLine.isNotEmpty()) {
-                getString(R.string.game_result_hint_five)
-            } else {
-                null
-            },
-            blackWins = state.blackWins,
-            whiteWins = state.whiteWins,
-        )
+        if (headline == resultKey) return
+        resultKey = headline
+        resultOverlay?.show(headline)
     }
 
     private fun renderCountdown(connected: Boolean, remainingMillis: Long) {

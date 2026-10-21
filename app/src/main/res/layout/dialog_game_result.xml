@@ -1,79 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  终局结果浮层的内容卡片。
-  样式沿用原本的横幅：主色容器 + 12dp 圆角 + 居中标题。
-  区别只在呈现位置：它挂在独立窗口上、浮动在棋盘中部偏上，不参与对局页布局，
-  棋盘不会因为结果出现而位移（横幅作为布局流节点会把棋盘整块顶下去）。
+  终局结果浮层的内容卡片：**只有一句结果文案**（如「电脑获胜」）。
+
+  轻量简洁：不要副标题提示、不要比分、不要按钮；
+  卡片宽度随文字自适应（wrap_content）并在窗口里居中，不占满屏、不做横幅。
+  呈现位置由 GameResultOverlay 决定：挂在独立窗口上、浮动在棋盘中部偏上，
+  不参与对局页布局，棋盘不会因为结果出现而位移。
 -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginStart="@dimen/spacing_m"
-    android:layout_marginEnd="@dimen/spacing_m"
+    android:layout_gravity="center"
     app:cardBackgroundColor="?attr/colorPrimaryContainer"
     app:cardCornerRadius="12dp"
     app:cardElevation="6dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/result_title"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="@dimen/spacing_m">
-
-        <TextView
-            android:id="@+id/result_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            tools:text="黑方胜！" />
-
-        <TextView
-            android:id="@+id/result_subtitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xs"
-            android:alpha="0.8"
-            android:gravity="center"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            tools:text="棋盘上已高亮获胜的五连" />
-
-        <TextView
-            android:id="@+id/result_score"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xs"
-            android:gravity="center"
-            android:textAppearance="?attr/textAppearanceLabelLarge"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            tools:text="本局比分　2 : 1" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_s"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/result_collapse"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/game_result_collapse" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/result_again"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_s"
-                android:layout_weight="1"
-                android:text="@string/game_result_again" />
-        </LinearLayout>
-    </LinearLayout>
+        android:paddingStart="@dimen/spacing_l"
+        android:paddingTop="@dimen/spacing_m"
+        android:paddingEnd="@dimen/spacing_l"
+        android:paddingBottom="@dimen/spacing_m"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:textColor="?attr/colorOnPrimaryContainer"
+        tools:text="电脑获胜" />
 </com.google.android.material.card.MaterialCardView>
