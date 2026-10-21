@@ -16,6 +16,15 @@ Android 五子棋应用，单 `app` 模块，100% Kotlin。手写 MVI（无 MVI 
 - Room 是 3.x，坐标在 `androidx.room3`（`room3-runtime` / `room3-compiler`，原 `room-ktx` 已并入 runtime），包名 `androidx.room3`，KSP 生成的是 Kotlin 代码；**Room 3 的 DAO 方法必须为 suspend**，阻塞调用方用 `runBlocking` 桥接（见 `RoomAiWeightStore`）。
 - 测试：`./gradlew :app:testDebugUnitTest`（覆盖 `domain/engine`、`domain/ai` 与 `data/net/Protocol.kt` 有线协议的 JVM 测试）。
 
+## CI（GitHub Actions）
+
+`.github/workflows/android.yml`：两个 job —— `build-apk`（打包 release APK）与 `unit-test`；推 tag 时把 APK 挂到同名 Release，Release 权限用内置 `GITHUB_TOKEN` + `permissions: contents: write`，不需要 PAT。
+
+- **海外 runner 必须用 init script 换仓库**：仓库 `settings.gradle.kts` 是「阿里云镜像优先」，为国内网络优化；在 GitHub 海外 runner 上会让 KSP 的 plugin marker 解析失败（`Plugin [id: 'com.google.devtools.ksp'] was not found`）。因此 CI 用 `--init-script .github/ci-repositories.init.gradle` 把插件/依赖仓库改成「官方源优先、阿里云兜底」。**不要改 `settings.gradle.kts` 的镜像顺序** —— 那是给国内开发者用的；也不要删掉 init script。
+- **诊断只能走 annotation 通道**：GitHub 的完整 job 日志匿名下载要 401/403，只有 `check-runs` 的 annotations 免登录可读。而 GitHub **每步每级别最多 10 条注解**，所以要把完整报错压进**一条**注解（用 `%0A` 表示换行、`%` 转义成 `%25`）。
+- **失败处理必须先 `set +e`**：runner 默认 shell 带 errexit，步骤里再开 `set -o pipefail` 会让失败管道直接终止脚本，`if` 诊断块不会执行。用 `PIPESTATUS[0]` 取真实退出码。
+- AGP 9.4.1 默认 build-tools 是 **36.0.0**（`ToolsRevisionUtils`），compileSdk 37 解析为平台包 `platforms;android-37.0`；runner 镜像两者都有，但缺组件时 AGP 自动补装需要许可证已接受，所以 CI 里无条件跑一次 `sdkmanager --licenses`。
+
 ## 发布产物加固（仅 release）
 
 `app/build.gradle.kts` 通过 AGP scoped-artifacts transform 把 `buildSrc` 的 `EncryptStringsTask` 接进了 release 编译链：在 R8 之前用 ASM 把每个类的 String 常量逐条 XOR 加密（每条常量一个随机偏移），并注入 `com.github.lany192.gomoku.guard.StrGuard` 负责运行时解密（`ldc` 密文 → `StrGuard.d(密文, 偏移)`）。构建日志会打印“字符串加密：N 个类、M 条字符串常量”。
