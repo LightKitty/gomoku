@@ -1,0 +1,27 @@
+// CI 专用 init script：把插件与依赖仓库改成「官方源优先、阿里云镜像兜底」。
+//
+// 仓库里的 settings.gradle.kts 是「阿里云镜像优先」，为国内开发者优化；
+// 但 GitHub 的 runner 在海外，镜像优先会让插件标记（plugin marker）的解析
+// 变得不可靠。这里只在 CI 里覆盖，不改动仓库本身的配置。
+//
+// 用法：./gradlew --init-script .github/ci-repositories.init.gradle <task>
+//
+// 说明：settingsEvaluated 在 settings 脚本执行完之后、项目配置之前触发，
+// 此时改 pluginManagement.repositories 仍能影响后续的插件解析。
+
+settingsEvaluated { settings ->
+    settings.pluginManagement.repositories.clear()
+    settings.pluginManagement.repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+        maven { url = "https://maven.aliyun.com/repository/public" }
+    }
+
+    settings.dependencyResolutionManagement.repositories.clear()
+    settings.dependencyResolutionManagement.repositories {
+        google()
+        mavenCentral()
+        maven { url = "https://maven.aliyun.com/repository/public" }
+    }
+}

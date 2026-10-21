@@ -117,7 +117,8 @@ jobs:
           for u in https://services.gradle.org/distributions/ https://maven.aliyun.com/repository/public/ https://dl.google.com/dl/android/maven2/ https://repo1.maven.org/maven2/ https://plugins.gradle.org/m2/; do
             code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -L "$u" 2>/dev/null)"
             case "$code" in
-              200|301|302|403)
+              # 404 只说明该 Maven 仓库不允许列目录，不代表不可达
+              200|301|302|403|404)
                 echo "::notice::网络可达 $u -> HTTP $code"
                 echo "| $u | $code |" >> "$GITHUB_STEP_SUMMARY"
                 ;;
@@ -126,6 +127,13 @@ jobs:
                 echo "| $u | ${code:-无响应} |" >> "$GITHUB_STEP_SUMMARY"
                 ;;
             esac
+          done
+          # 插件标记（plugin marker）是插件解析的成败关键，逐个仓库精确探测
+          MARKER="com/google/devtools/ksp/com.google.devtools.ksp.gradle.plugin/2.3.12/com.google.devtools.ksp.gradle.plugin-2.3.12.pom"
+          for u in "https://plugins.gradle.org/m2" "https://repo1.maven.org/maven2" "https://repo.maven.apache.org/maven2" "https://maven.aliyun.com/repository/public"; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 -L "$u/$MARKER" 2>/dev/null)"
+            echo "::notice::KSP 插件标记 $u -> HTTP ${code:-无响应}"
+            echo "| $u/$MARKER | ${code:-无响应} |" >> "$GITHUB_STEP_SUMMARY"
           done
           # wrapper 自带下载能力：这里能验证 Gradle 发行包能否下载解压
           ./gradlew --version > /tmp/gradle-version.log 2>&1
@@ -148,30 +156,28 @@ jobs:
         run: |
           set +e
           set -o pipefail
-          ./gradlew assembleRelease --stacktrace 2>&1 | tee /tmp/gradle-build.log
+          ./gradlew --init-script .github/ci-repositories.init.gradle assembleRelease --stacktrace 2>&1 | tee /tmp/gradle-build.log
           status=${PIPESTATUS[0]}
           set -e
           if [ "$status" -ne 0 ]; then
-            echo "::group::构建失败：Gradle 错误摘要"
-            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 40
-            echo "::endgroup::"
-            echo "::group::构建失败：日志尾部"
-            tail -n 30 /tmp/gradle-build.log
-            echo "::endgroup::"
+            DETAIL="$(awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 60)"
+            TAIL="$(tail -n 40 /tmp/gradle-build.log)"
             {
               echo "### 构建失败"
               echo ""
               echo '```'
-              awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 40
-              tail -n 30 /tmp/gradle-build.log
+              echo "$DETAIL"
+              echo '```'
+              echo ""
+              echo '```'
+              echo "$TAIL"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 20 | while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              esc=${line//'%'/'%25'}
-              esc=${esc//$'\r'/'%0D'}
-              echo "::error::${esc}"
-            done
+            # GitHub 每步最多 10 条 error 注解，所以把全文压进一条（%0A 表示换行）
+            MSG="$(printf '构建失败。Gradle 错误摘要：\n%s\n\n日志尾部：\n%s' "$DETAIL" "$TAIL")"
+            esc="$(printf '%s' "$MSG" | sed -e 's/%/%25/g' -e 's/\r/%0D/g')"
+            esc="${esc//$'\n'/%0A}"
+            echo "::error::${esc}"
             exit "$status"
           fi
 
@@ -281,30 +287,28 @@ jobs:
         run: |
           set +e
           set -o pipefail
-          ./gradlew :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle-test.log
+          ./gradlew --init-script .github/ci-repositories.init.gradle :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle-test.log
           status=${PIPESTATUS[0]}
           set -e
           if [ "$status" -ne 0 ]; then
-            echo "::group::测试失败：Gradle 错误摘要"
-            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 40
-            echo "::endgroup::"
-            echo "::group::测试失败：日志尾部"
-            tail -n 30 /tmp/gradle-test.log
-            echo "::endgroup::"
+            DETAIL="$(awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 60)"
+            TAIL="$(tail -n 40 /tmp/gradle-test.log)"
             {
               echo "### 单元测试失败"
               echo ""
               echo '```'
-              awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 40
-              tail -n 30 /tmp/gradle-test.log
+              echo "$DETAIL"
+              echo '```'
+              echo ""
+              echo '```'
+              echo "$TAIL"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 20 | while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              esc=${line//'%'/'%25'}
-              esc=${esc//$'\r'/'%0D'}
-              echo "::error::${esc}"
-            done
+            # GitHub 每步最多 10 条 error 注解，所以把全文压进一条（%0A 表示换行）
+            MSG="$(printf '单元测试失败。Gradle 错误摘要：\n%s\n\n日志尾部：\n%s' "$DETAIL" "$TAIL")"
+            esc="$(printf '%s' "$MSG" | sed -e 's/%/%25/g' -e 's/\r/%0D/g')"
+            esc="${esc//$'\n'/%0A}"
+            echo "::error::${esc}"
             exit "$status"
           fi
 

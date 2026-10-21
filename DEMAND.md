@@ -854,7 +854,7 @@ Toolbar「两人对战」→ 记分卡（黑方 / 白方 + 胜场）→ 倒计�
 | 可测试性 | 随机与时钟可注入；棋盘拷贝零副作用；排序全序保证同种子可复现；规则引擎与协议编解码必须有单元测试（含字节冻结用例） |
 | 稳定性 | 畸形网络包只丢弃不崩溃；空历史悔棋/非法落子安全无操作；广播接收器重复注销做防护 |
 | 兼容性 | 协议只允许追加；新增消息类型默认对旧版静默忽略 |
-| 持续集成 | GitHub Actions（`.github/workflows/android.yml`）自动打包：推 tag → 生成 release APK 并挂到同名 GitHub Release；推 master / 提 PR / 手动触发 → 产出 Actions 构件可直接下载；另跑 `testDebugUnitTest` 单元测试。构建环境固定为 JDK 17（AGP 9.4 最低要求）、compileSdk 37（对应 SDK 平台包 `platforms;android-37.0`，同时确保 AGP 9.4 默认的 build-tools `36.0.0` 在位并已接受许可证）、签名用仓库内 `app/test.jks`（与本地同签，可覆盖安装）。构建前做 JDK / SDK / 仓库网络可达性自检；构建或测试失败时把 Gradle 错误摘要以 annotation 与 job summary 输出（免登录即可查看，便于定位原因） |
+| 持续集成 | GitHub Actions（`.github/workflows/android.yml`）自动打包：推 tag → 生成 release APK 并挂到同名 GitHub Release；推 master / 提 PR / 手动触发 → 产出 Actions 构件可直接下载；另跑 `testDebugUnitTest` 单元测试。构建环境固定为 JDK 17（AGP 9.4 最低要求）、compileSdk 37（对应 SDK 平台包 `platforms;android-37.0`，同时确保 AGP 9.4 默认的 build-tools `36.0.0` 在位并已接受许可证）、签名用仓库内 `app/test.jks`（与本地同签，可覆盖安装）。构建前做 JDK / SDK / 仓库网络可达性自检；CI 内用 init script（`.github/ci-repositories.init.gradle`）把插件与依赖仓库切到「官方源优先、阿里云镜像兜底」，不影响仓库本身的国内镜像配置；构建或测试失败时把 Gradle 错误摘要以 annotation 与 job summary 输出（免登录即可查看，便于定位原因） |
 | 使用体验 | 所有网络等待有等待框、所有失败有明确 Toast；无阻塞主线程操作 |
 
 ---
