@@ -104,10 +104,11 @@ class GameResultOverlay(
         activity.window.decorView.getLocationOnScreen(rootLoc)
         val params = window.attributes
         params.gravity = Gravity.CENTER
-        // yOffset 是 Int 像素值：卡片中心对齐到棋盘往下 35% 处
+        // x/y 是相对 gravity 的偏移量（老的 yOffset 字段在 API 37 的 SDK 里已移除）
+        // 卡片中心对齐到棋盘往下 35% 处
         val targetCenter = boardLoc[1] + (boardView.height * BOARD_ANCHOR_RATIO).toInt()
         val screenCenter = rootLoc[1] + activity.window.decorView.height / 2
-        params.yOffset = targetCenter - screenCenter
+        params.y = targetCenter - screenCenter
         window.attributes = params
     }
 
