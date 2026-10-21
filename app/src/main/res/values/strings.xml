@@ -47,8 +47,8 @@
     <string name="difficulty">难度</string>
     <string name="ai_thinking_speed">速度</string>
     <string name="ai_speed_fast">快</string>
-    <string name="ai_speed_normal">1s</string>
-    <string name="ai_speed_slow">3s</string>
+    <string name="ai_speed_normal">中</string>
+    <string name="ai_speed_slow">慢</string>
     <string name="level_speed_format">难度：%1$s · 速度：%2$s</string>
     <string name="ai_family_search">搜索类</string>
     <string name="ai_family_threat">威胁搜索</string>
