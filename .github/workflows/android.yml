@@ -49,8 +49,10 @@ jobs:
       - name: 配置 Gradle 缓存
         uses: gradle/actions/setup-gradle@v6
 
-      # runner 镜像已自带 platforms;android-37.0 与 build-tools;37.0.0（compileSdk 37 在
-      # AGP 9.4 下解析为 android-37.0），直接用即可；镜像缺组件时再用 sdkmanager 补装。
+      # runner 镜像已自带 platforms;android-37.0（compileSdk 37 在 AGP 9.4 下解析为
+      # android-37.0），但 AGP 9.4.1 默认的 build-tools 是 36.0.0（ToolsRevisionUtils），
+      # 两者都要在位；缺组件时 AGP 会去自动下载，而自动下载要求许可证已接受，
+      # 所以这里无条件接受一次许可证，不能因为「组件看起来都在」就跳过。
       # 不用 android-actions/setup-android：它在当前 runner 上安装失败。
       - name: 准备 Android SDK
         run: |
@@ -58,19 +60,31 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "SDK 根目录: $ANDROID_HOME"
-          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ -d "$ANDROID_HOME/build-tools/37.0.0" ]; then
-            echo "镜像已自带 android-37.0 与 build-tools 37.0.0，跳过安装"
-          else
-            SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-            if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager || true)"; fi
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager || true)"; fi
+          echo "sdkmanager: ${SDKMANAGER:-<未找到>}"
+          MISSING=()
+          [ -d "$ANDROID_HOME/platforms/android-37.0" ] || MISSING+=("platforms;android-37.0")
+          [ -d "$ANDROID_HOME/build-tools/36.0.0" ] || MISSING+=("build-tools;36.0.0")
+          [ -d "$ANDROID_HOME/build-tools/37.0.0" ] || MISSING+=("build-tools;37.0.0")
+          [ -d "$ANDROID_HOME/platform-tools" ] || MISSING+=("platform-tools")
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "需要补装的 SDK 组件: ${MISSING[*]}"
             if [ -z "$SDKMANAGER" ]; then
-              echo "::error::runner 镜像缺少 android-37.0 / build-tools 37.0.0，且没有 sdkmanager 可用"
+              echo "::error::runner 镜像缺少 SDK 组件: ${MISSING[*]}，且没有 sdkmanager 可用"
               exit 1
             fi
-            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-            "$SDKMANAGER" "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
+          else
+            echo "镜像已自带所需 SDK 组件"
           fi
-          ls "$ANDROID_HOME/platforms"
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            if [ ${#MISSING[@]} -gt 0 ]; then
+              "$SDKMANAGER" "${MISSING[@]}"
+            fi
+          fi
+          echo "platforms: $(ls "$ANDROID_HOME/platforms" 2>/dev/null | tr '\n' ' ')"
+          echo "build-tools: $(ls "$ANDROID_HOME/build-tools" 2>/dev/null | tr '\n' ' ')"
 
       - name: 赋予 gradlew 可执行权限
         run: chmod +x ./gradlew
@@ -238,17 +252,24 @@ jobs:
           export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
-          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ -d "$ANDROID_HOME/build-tools/37.0.0" ]; then
-            echo "镜像已自带 android-37.0 与 build-tools 37.0.0，跳过安装"
-          else
-            SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-            if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager || true)"; fi
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager || true)"; fi
+          MISSING=()
+          [ -d "$ANDROID_HOME/platforms/android-37.0" ] || MISSING+=("platforms;android-37.0")
+          [ -d "$ANDROID_HOME/build-tools/36.0.0" ] || MISSING+=("build-tools;36.0.0")
+          [ -d "$ANDROID_HOME/build-tools/37.0.0" ] || MISSING+=("build-tools;37.0.0")
+          [ -d "$ANDROID_HOME/platform-tools" ] || MISSING+=("platform-tools")
+          if [ ${#MISSING[@]} -gt 0 ]; then
             if [ -z "$SDKMANAGER" ]; then
-              echo "::error::runner 镜像缺少 android-37.0 / build-tools 37.0.0，且没有 sdkmanager 可用"
+              echo "::error::runner 镜像缺少 SDK 组件: ${MISSING[*]}，且没有 sdkmanager 可用"
               exit 1
             fi
+          fi
+          if [ -n "$SDKMANAGER" ]; then
             yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-            "$SDKMANAGER" "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
+            if [ ${#MISSING[@]} -gt 0 ]; then
+              "$SDKMANAGER" "${MISSING[@]}"
+            fi
           fi
 
       - name: 赋予 gradlew 可执行权限
