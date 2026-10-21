@@ -160,10 +160,17 @@ jobs:
           status=${PIPESTATUS[0]}
           set -e
           if [ "$status" -ne 0 ]; then
+            # Kotlin 编译错误（e: 行）出现在 FAILURE 块之前，必须单独抓，
+            # 否则诊断里只剩 "Compilation error" 看不到真正原因
+            ERRORS="$(grep -E '^e: ' /tmp/gradle-build.log | head -n 40)"
             DETAIL="$(awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-build.log | head -n 60)"
             TAIL="$(tail -n 40 /tmp/gradle-build.log)"
             {
               echo "### 构建失败"
+              echo ""
+              echo '```'
+              echo "$ERRORS"
+              echo '```'
               echo ""
               echo '```'
               echo "$DETAIL"
@@ -174,7 +181,7 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             # GitHub 每步最多 10 条 error 注解，所以把全文压进一条（%0A 表示换行）
-            MSG="$(printf '构建失败。Gradle 错误摘要：\n%s\n\n日志尾部：\n%s' "$DETAIL" "$TAIL")"
+            MSG="$(printf '构建失败。编译器错误：\n%s\n\nGradle 错误摘要：\n%s\n\n日志尾部：\n%s' "$ERRORS" "$DETAIL" "$TAIL")"
             esc="$(printf '%s' "$MSG" | sed -e 's/%/%25/g' -e 's/\r/%0D/g')"
             esc="${esc//$'\n'/%0A}"
             echo "::error::${esc}"
@@ -291,10 +298,16 @@ jobs:
           status=${PIPESTATUS[0]}
           set -e
           if [ "$status" -ne 0 ]; then
+            # 同上：编译错误行在 FAILURE 块之前，单独抓
+            ERRORS="$(grep -E '^e: ' /tmp/gradle-test.log | head -n 40)"
             DETAIL="$(awk '/^FAILURE: /{f=1} f && !/^[[:space:]]*at /{print}' /tmp/gradle-test.log | head -n 60)"
             TAIL="$(tail -n 40 /tmp/gradle-test.log)"
             {
               echo "### 单元测试失败"
+              echo ""
+              echo '```'
+              echo "$ERRORS"
+              echo '```'
               echo ""
               echo '```'
               echo "$DETAIL"
@@ -305,7 +318,7 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             # GitHub 每步最多 10 条 error 注解，所以把全文压进一条（%0A 表示换行）
-            MSG="$(printf '单元测试失败。Gradle 错误摘要：\n%s\n\n日志尾部：\n%s' "$DETAIL" "$TAIL")"
+            MSG="$(printf '单元测试失败。编译器错误：\n%s\n\nGradle 错误摘要：\n%s\n\n日志尾部：\n%s' "$ERRORS" "$DETAIL" "$TAIL")"
             esc="$(printf '%s' "$MSG" | sed -e 's/%/%25/g' -e 's/\r/%0D/g')"
             esc="${esc//$'\n'/%0A}"
             echo "::error::${esc}"

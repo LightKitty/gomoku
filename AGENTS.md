@@ -22,6 +22,7 @@ Android 五子棋应用，单 `app` 模块，100% Kotlin。手写 MVI（无 MVI 
 
 - **海外 runner 必须用 init script 换仓库**：仓库 `settings.gradle.kts` 是「阿里云镜像优先」，为国内网络优化；在 GitHub 海外 runner 上会让 KSP 的 plugin marker 解析失败（`Plugin [id: 'com.google.devtools.ksp'] was not found`）。因此 CI 用 `--init-script .github/ci-repositories.init.gradle` 把插件/依赖仓库改成「官方源优先、阿里云兜底」。**不要改 `settings.gradle.kts` 的镜像顺序** —— 那是给国内开发者用的；也不要删掉 init script。
 - **诊断只能走 annotation 通道**：GitHub 的完整 job 日志匿名下载要 401/403，只有 `check-runs` 的 annotations 免登录可读。而 GitHub **每步每级别最多 10 条注解**，所以要把完整报错压进**一条**注解（用 `%0A` 表示换行、`%` 转义成 `%25`）。
+- **Kotlin 编译错误要单独抓 `e:` 行**：编译器的 `e: file://…:NN:NN 原因` 输出在 `FAILURE:` 块**之前**，只按 `FAILURE:` 截取会只得到 "Compilation error"，看不到真正原因 —— 工作流里用 `grep -E '^e: '` 单独抓一遍再拼进注解。
 - **失败处理必须先 `set +e`**：runner 默认 shell 带 errexit，步骤里再开 `set -o pipefail` 会让失败管道直接终止脚本，`if` 诊断块不会执行。用 `PIPESTATUS[0]` 取真实退出码。
 - AGP 9.4.1 默认 build-tools 是 **36.0.0**（`ToolsRevisionUtils`），compileSdk 37 解析为平台包 `platforms;android-37.0`；runner 镜像两者都有，但缺组件时 AGP 自动补装需要许可证已接受，所以 CI 里无条件跑一次 `sdkmanager --licenses`。
 
