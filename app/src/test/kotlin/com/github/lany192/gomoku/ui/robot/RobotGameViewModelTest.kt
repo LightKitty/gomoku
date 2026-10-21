@@ -2,8 +2,10 @@ package com.github.lany192.gomoku.ui.robot
 
 import com.github.lany192.gomoku.data.settings.AiAlgorithmStore
 import com.github.lany192.gomoku.data.settings.AiLevelStore
+import com.github.lany192.gomoku.data.settings.AiThinkingSpeedStore
 import com.github.lany192.gomoku.domain.ai.AiAlgorithm
 import com.github.lany192.gomoku.domain.ai.AiEnginePool
+import com.github.lany192.gomoku.domain.ai.AiThinkingSpeed
 import com.github.lany192.gomoku.domain.ai.Difficulty
 import com.github.lany192.gomoku.domain.ai.GameOutcome
 import com.github.lany192.gomoku.domain.ai.GomokuAI
@@ -57,6 +59,7 @@ class RobotGameViewModelTest {
             enginePool = factory.pool,
             levelStore = FakeLevelStore(Difficulty.HARD),
             algorithmStore = FakeAlgorithmStore(AiAlgorithm.MCTS),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -73,6 +76,7 @@ class RobotGameViewModelTest {
             enginePool = factory.pool,
             levelStore = FakeLevelStore(),
             algorithmStore = algorithmStore,
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -97,6 +101,7 @@ class RobotGameViewModelTest {
             enginePool = factory.pool,
             levelStore = levelStore,
             algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -116,6 +121,7 @@ class RobotGameViewModelTest {
             enginePool = factory.pool,
             levelStore = FakeLevelStore(),
             algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -153,6 +159,7 @@ class RobotGameViewModelTest {
             enginePool = AiEnginePool(width = 15, height = 15, factory = { _, _, _ -> engine }),
             levelStore = FakeLevelStore(),
             algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -181,6 +188,7 @@ class RobotGameViewModelTest {
             enginePool = factory.pool,
             levelStore = FakeLevelStore(),
             algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -208,6 +216,71 @@ class RobotGameViewModelTest {
         assertNull(vm.state.value.winner)
     }
 
+    // ---------- 思考速度 ----------
+
+    @Test(timeout = 10_000)
+    fun `思考速度落库并写进状态`() = runTest(dispatcher) {
+        val speedStore = FakeThinkingSpeedStore()
+        val vm = RobotGameViewModel(
+            enginePool = FakeFactory().pool,
+            levelStore = FakeLevelStore(),
+            algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = speedStore,
+            aiDispatcher = Dispatchers.Default,
+        )
+
+        // 未存过思考速度时走默认档
+        assertEquals(AiThinkingSpeed.DEFAULT, vm.state.value.thinkingSpeed)
+
+        vm.dispatch(RobotGameIntent.ThinkingSpeedSelected(AiThinkingSpeed.SLOW))
+        advanceUntilIdle()
+
+        assertEquals(AiThinkingSpeed.SLOW, vm.state.value.thinkingSpeed)
+        assertEquals(AiThinkingSpeed.SLOW, speedStore.read())
+    }
+
+    @Test(timeout = 10_000)
+    fun `标准思考速度下机器不会立刻落子`() = runTest(dispatcher) {
+        val factory = FakeFactory()
+        val vm = RobotGameViewModel(
+            enginePool = factory.pool,
+            levelStore = FakeLevelStore(),
+            algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.NORMAL),
+            aiDispatcher = Dispatchers.Default,
+        )
+
+        val start = System.currentTimeMillis()
+        vm.dispatch(RobotGameIntent.BoardTap(7, 7))
+
+        // 人刚落子时机器还应该在"想"，不能秒回
+        advanceUntilIdle()
+        assertNull("机器不该立刻落子", vm.state.value.board.cells[0][0])
+
+        awaitTrue { vm.state.value.board.cells[0][0] == Side.WHITE }
+        val elapsed = System.currentTimeMillis() - start
+        assertTrue("机器落子过快：${elapsed}ms", elapsed >= AiThinkingSpeed.NORMAL.delayMillis)
+    }
+
+    @Test(timeout = 10_000)
+    fun `快速思考速度下机器立即落子`() = runTest(dispatcher) {
+        val factory = FakeFactory()
+        val vm = RobotGameViewModel(
+            enginePool = factory.pool,
+            levelStore = FakeLevelStore(),
+            algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
+            aiDispatcher = Dispatchers.Default,
+        )
+
+        val start = System.currentTimeMillis()
+        vm.dispatch(RobotGameIntent.BoardTap(7, 7))
+        awaitTrue { vm.state.value.board.cells[0][0] == Side.WHITE }
+
+        val elapsed = System.currentTimeMillis() - start
+        assertTrue("快速档不该等待思考延迟：${elapsed}ms", elapsed < AiThinkingSpeed.NORMAL.delayMillis)
+    }
+
     // ---------- 满盘和棋 ----------
 
     @Test(timeout = 10_000)
@@ -219,6 +292,7 @@ class RobotGameViewModelTest {
             enginePool = factory.pool,
             levelStore = FakeLevelStore(),
             algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -245,6 +319,7 @@ class RobotGameViewModelTest {
             enginePool = factory.pool,
             levelStore = FakeLevelStore(),
             algorithmStore = FakeAlgorithmStore(),
+            thinkingSpeedStore = FakeThinkingSpeedStore(AiThinkingSpeed.FAST),
             aiDispatcher = Dispatchers.Default,
         )
 
@@ -285,6 +360,14 @@ class RobotGameViewModelTest {
 
         override fun write(algorithm: AiAlgorithm) {
             this.algorithm = algorithm
+        }
+    }
+
+    private class FakeThinkingSpeedStore(private var speed: AiThinkingSpeed? = null) : AiThinkingSpeedStore {
+        override fun read(): AiThinkingSpeed? = speed
+
+        override fun write(speed: AiThinkingSpeed) {
+            this.speed = speed
         }
     }
 

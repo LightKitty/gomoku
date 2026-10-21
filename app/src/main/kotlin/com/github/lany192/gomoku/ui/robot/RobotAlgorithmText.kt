@@ -3,6 +3,7 @@ package com.github.lany192.gomoku.ui.robot
 import com.github.lany192.gomoku.R
 import com.github.lany192.gomoku.domain.ai.AiAlgorithm
 import com.github.lany192.gomoku.domain.ai.AiFamily
+import com.github.lany192.gomoku.domain.ai.AiThinkingSpeed
 import com.github.lany192.gomoku.domain.ai.Difficulty
 
 /**
@@ -53,4 +54,10 @@ fun levelNameRes(level: Difficulty): Int = when (level) {
     Difficulty.MEDIUM -> R.string.ai_level_medium
     Difficulty.HARD -> R.string.ai_level_hard
     Difficulty.MASTER -> R.string.ai_level_master
+}
+
+fun thinkingSpeedNameRes(speed: AiThinkingSpeed): Int = when (speed) {
+    AiThinkingSpeed.FAST -> R.string.ai_speed_fast
+    AiThinkingSpeed.NORMAL -> R.string.ai_speed_normal
+    AiThinkingSpeed.SLOW -> R.string.ai_speed_slow
 }

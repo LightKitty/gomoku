@@ -4,8 +4,10 @@ import androidx.lifecycle.viewModelScope
 import com.github.lany192.gomoku.core.mvi.MviViewModel
 import com.github.lany192.gomoku.data.settings.AiAlgorithmStore
 import com.github.lany192.gomoku.data.settings.AiLevelStore
+import com.github.lany192.gomoku.data.settings.AiThinkingSpeedStore
 import com.github.lany192.gomoku.domain.ai.AiAlgorithm
 import com.github.lany192.gomoku.domain.ai.AiEnginePool
+import com.github.lany192.gomoku.domain.ai.AiThinkingSpeed
 import com.github.lany192.gomoku.domain.ai.Difficulty
 import com.github.lany192.gomoku.domain.ai.GameOutcome
 import com.github.lany192.gomoku.domain.ai.GomokuAI
@@ -18,6 +20,7 @@ import com.github.lany192.gomoku.domain.model.Side
 import com.github.lany192.gomoku.ui.common.BoardRenderState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -30,12 +33,14 @@ import kotlinx.coroutines.withContext
  * - AI 思考期间请求悔棋，先记 [pendingRollback]，等 AI 落子后一并回退两子（对齐旧版 isRollback 语义）
  * - AI 思考期间改算法，先记 [pendingAlgorithm]，等本次落子落地后再换引擎，任一时刻只有一个引擎在跑
  * - 思考期间重开棋局时，过期的 AI 落子按轮次校验丢弃
+ * - 落子前按 [thinkingSpeed] 等待一段时间再开始搜索：机器不会人刚落子就秒回，且不影响棋力
  */
 class RobotGameViewModel(
     private val engine: GameEngine = GameEngine(),
     private val enginePool: AiEnginePool = AiEnginePool(BOARD_SIZE, BOARD_SIZE),
     private val levelStore: AiLevelStore? = null,
     private val algorithmStore: AiAlgorithmStore? = null,
+    private val thinkingSpeedStore: AiThinkingSpeedStore? = null,
     private val aiDispatcher: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1),
 ) : MviViewModel<RobotGameIntent, RobotGameState, RobotGameEffect>(
     RobotGameState(BoardRenderState.empty())
@@ -60,6 +65,9 @@ class RobotGameViewModel(
     private var aiLevel: Difficulty = levelStore?.read() ?: Difficulty.MEDIUM
     private var aiAlgorithm: AiAlgorithm = algorithmStore?.read() ?: AiAlgorithm.DEFAULT
 
+    /** 机器思考速度：落子前等多久，只影响观感 */
+    private var thinkingSpeed: AiThinkingSpeed = thinkingSpeedStore?.read() ?: AiThinkingSpeed.DEFAULT
+
     /** 当前引擎实例；换算法时整体替换，不在旧实例上改行为 */
     private var ai: GomokuAI = enginePool.obtain(aiAlgorithm, aiLevel)
 
@@ -70,6 +78,7 @@ class RobotGameViewModel(
                 board = BoardRenderState.from(engine.snapshot()),
                 aiLevel = aiLevel,
                 aiAlgorithm = aiAlgorithm,
+                thinkingSpeed = thinkingSpeed,
             )
         }
     }
@@ -109,6 +118,12 @@ class RobotGameViewModel(
                     selectAlgorithm(intent.algorithm)
                 }
             }
+            is RobotGameIntent.ThinkingSpeedSelected -> {
+                // 思考速度只影响下一手：已在思考中的这一手仍按旧速度走
+                thinkingSpeed = intent.speed
+                thinkingSpeedStore?.write(intent.speed)
+                updateState { it.copy(thinkingSpeed = intent.speed) }
+            }
         }
     }
 
@@ -131,7 +146,12 @@ class RobotGameViewModel(
         // 棋盘在主线程取好：AI 计算期间主线程可能重开/悔棋，引擎快照不能跨线程读
         val board = aiMap()
         val token = generation
+        // 思考速度同样在主线程取好：等待期间可能被改，下一手才用新值
+        val waitMillis = thinkingSpeed.delayMillis
         viewModelScope.launch(aiDispatcher) {
+            // 思考延迟：先等一会儿再算，让机器看起来在想，而不是人刚落子就秒回。
+            // 等待期间棋盘可能已重开，后面的代数校验会把过期着法丢掉。
+            if (waitMillis > 0) delay(waitMillis)
             val point = instance.getPosition(board)
             withContext(Dispatchers.Main.immediate) {
                 aiThinking = false

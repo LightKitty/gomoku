@@ -41,11 +41,15 @@
     <string name="ai_level_medium">中等</string>
     <string name="ai_level_hard">困难</string>
     <string name="ai_level_master">大师</string>
-    <!-- 对手设置（算法 + 难度） -->
+    <!-- 对手设置（算法 + 难度 + 思考速度） -->
     <string name="ai_select_title">对手设置</string>
     <string name="algorithm">算法</string>
     <string name="difficulty">难度</string>
-    <string name="algorithm_difficulty_format">算法：%1$s · 难度：%2$s</string>
+    <string name="ai_thinking_speed">思考速度</string>
+    <string name="ai_speed_fast">快</string>
+    <string name="ai_speed_normal">标准</string>
+    <string name="ai_speed_slow">慢</string>
+    <string name="algorithm_difficulty_format">算法：%1$s · 难度：%2$s · 思考速度：%3$s</string>
     <string name="ai_family_search">搜索类</string>
     <string name="ai_family_threat">威胁搜索</string>
     <string name="ai_family_evaluation">评估类</string>
