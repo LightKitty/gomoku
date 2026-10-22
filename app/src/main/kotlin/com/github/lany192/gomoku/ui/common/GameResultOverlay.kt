@@ -10,7 +10,10 @@ import android.view.WindowManager
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDialog
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import com.github.lany192.gomoku.R
+import com.google.android.material.card.MaterialCardView
 
 /**
  * 终局结果浮层（本地双人 / 人机 / 联机共用）。
@@ -19,10 +22,11 @@ import com.github.lany192.gomoku.R
  * - 横幅是对局页布局流里的兄弟节点，`gone → visible` 会把下方棋盘整块顶下去（棋盘位移）；
  * - 棋盘是 SurfaceView（setZOrderOnTop），普通 View 盖不住它，想浮在棋盘上只能用独立窗口。
  *
- * 所以浮层挂在 Dialog 窗口上、**浮动在棋盘靠上部**，不参与对局页布局，棋盘纹丝不动。
+ * 所以浮层挂在 Dialog 窗口上、**浮动在棋盘中部偏上**，不参与对局页布局，棋盘纹丝不动。
  *
  * 内容只保留**一句结果文案**（如「电脑获胜」）：轻量简洁，不要副标题、比分与按钮。
- * 卡片宽度随文字自适应并居中，不占满屏。窗口遮罩透明度置 0，棋盘不会被压暗。
+ * 卡片宽度随文字自适应并居中，不占满屏。窗口遮罩透明度置 0，棋盘不会被压暗；
+ * 卡片底色再加一层轻微透明，棋盘能从后面隐约透出来。
  *
  * 交互：浮层窗口带 `FLAG_NOT_TOUCH_MODAL`，**不拦截**窗口之外的触摸 —— 那股触摸直接落到对局页，
  * 底下的按钮照常触发；浮层则由对局页在这次触摸结束后收起（见 [GameActivity]）。
@@ -56,6 +60,7 @@ class GameResultOverlay(
         }
         val overlay = AppCompatDialog(activity)
         overlay.setContentView(R.layout.dialog_game_result)
+        applyCardAlpha(overlay)
         overlay.window?.apply {
             // 卡片自带圆角与配色，窗口本身透明
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -97,7 +102,20 @@ class GameResultOverlay(
     }
 
     /**
-     * 把浮层挪到棋盘靠上部。
+     * 卡片底色加一点透明度。
+     *
+     * 底色取 `@color/primary_container`（与主题里的 `colorPrimaryContainer` 一一对应，
+     * 日/夜两套色值自动跟随），再叠一层 alpha，棋盘能从卡片后面隐约透出来，
+     * 浮层不显得笨重；文字仍是 `colorOnPrimaryContainer`，对比度不受影响。
+     */
+    private fun applyCardAlpha(overlay: AppCompatDialog) {
+        val card = overlay.findViewById<MaterialCardView>(R.id.result_card) ?: return
+        val base = ContextCompat.getColor(activity, R.color.primary_container)
+        card.setCardBackgroundColor(ColorUtils.setAlphaComponent(base, CARD_BG_ALPHA))
+    }
+
+    /**
+     * 把浮层挪到棋盘中部偏上。
      *
      * 卡片以窗口中心为基准定位：取棋盘在屏幕上的位置，算出卡片中心该落在棋盘往下
      * [BOARD_ANCHOR_RATIO] 处，再用 y 偏移相对屏幕中心微调。棋盘与活动窗口都已布局完毕，
@@ -128,7 +146,10 @@ class GameResultOverlay(
     }
 
     companion object {
-        /** 卡片中心对齐到棋盘往下 15% 处：浮在棋盘靠上部，不压住下方战局 */
-        private const val BOARD_ANCHOR_RATIO = 0.15f
+        /** 卡片中心对齐到棋盘往下 35% 处：浮在棋盘中部偏上，不压住下方战局 */
+        private const val BOARD_ANCHOR_RATIO = 0.35f
+
+        /** 卡片底色不透明度：留 15% 透明，棋盘从卡片后面隐约透出来 */
+        private const val CARD_BG_ALPHA = 0.85f
     }
 }

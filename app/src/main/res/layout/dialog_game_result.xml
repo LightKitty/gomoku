@@ -4,13 +4,15 @@
 
   轻量简洁：不要副标题提示、不要比分、不要按钮；
   卡片宽度随文字自适应（wrap_content）并在窗口里居中，不占满屏、不做横幅。
-  呈现位置由 GameResultOverlay 决定：挂在独立窗口上、浮动在棋盘靠上部，
+  呈现位置由 GameResultOverlay 决定：挂在独立窗口上、浮动在棋盘中部偏上，
   不参与对局页布局，棋盘不会因为结果出现而位移。
+  卡片底色的透明度也由 GameResultOverlay 叠加（底色取主题的 colorPrimaryContainer）。
 -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/result_card"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_gravity="center"

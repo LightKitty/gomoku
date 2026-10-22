@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
  */
 abstract class GameActivity : AppCompatActivity() {
 
-    /** 终局结果浮层：浮动在棋盘靠上部，不占对局页布局，棋盘不会位移 */
+    /** 终局结果浮层：浮动在棋盘中部偏上，不占对局页布局，棋盘不会位移 */
     protected var resultOverlay: GameResultOverlay? = null
 
     /**
