@@ -26,8 +26,8 @@ android {
         targetSdk = 36
         // 与 GitHub Release 的 tag 一一对应：发 v1.0.N 就用 versionCode = N、versionName = "1.0.N"
         // versionCode 必须递增，否则系统会把新包判成降级直接拒装
-        versionCode = 7
-        versionName = "1.0.7"
+        versionCode = 8
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

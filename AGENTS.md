@@ -45,8 +45,8 @@ Android 五子棋应用，单 `app` 模块，100% Kotlin。手写 MVI（无 MVI 
 - `data/net/` —— `Protocol.kt`（字节级编解码 + `TcpFrameReader`）、`LanDiscoveryManager`（UDP 发现/握手/聊天）、`LanGameClient`（TCP 对局）、`HeartbeatMonitor`（纯 Kotlin 心跳/假死检测，局域网与蓝牙共用）、`GameTransport`（对局传输抽象，`ui/net` 唯一依赖的建连接口）。阻塞式 `DatagramSocket.receive()` / `Socket.read()` 不响应协程取消 —— 须先关闭 socket 再取消 scope 来停止。
 - `data/bt/` —— `BtDiscoveryManager`（已配对列表 + 系统发现广播 + RFCOMM 握手）、`BtGameClient`（RFCOMM 对局，实现 `GameTransport`）。`accept()`/`read()` 同样靠关闭 socket 打断。`BtDiscoveryManager` 是一次性的：`stop()` 会取消 scope，不可复用。
 - `ui/common/GameBoardView` —— SurfaceView 棋盘；`render(state)` 是唯一渲染入口，`onCellTapped` 是唯一输入回调；自身不含任何对局逻辑。绘制层级为 **胜利连线 → 棋子 → 最后一手标记 → 胜利红圈 → 焦点框**：连线沉在棋子下面（只从子与子的缝隙里露出，不把棋子拦腰截断），红圈提到最上层（最后一手那颗子整颗重画也盖不住自己的圈，五连高亮始终是完整的五圈 —— 这一层顺序别再改回去）。
-- `ui/common/GameResultOverlay` —— 终局结果浮层，三人机/联机三处对局页共用。**终局结果不许再做成对局页布局里的横幅/占位 View**：那类节点 `gone → visible` 会把下方棋盘整块顶下去（棋盘位移）；而棋盘是 SurfaceView（`setZOrderOnTop`），普通 View 也盖不住它 —— 所以浮层只能挂在独立 Dialog 窗口上：卡片样式沿用原本的横幅（主色容器 + 12dp 圆角），浮动在棋盘中部偏上；窗口遮罩透明度置 0，棋盘既不位移也不被压暗。**内容只有一句结果文案**（如「电脑获胜」），不要副标题/比分/按钮；卡片宽度随文字自适应并居中，不占满屏（再开一局用对局页工具栏的「新开」）。
-- `ui/common/GameActivity` —— 三个对局页（两人/人机/联机）的基类。浮层窗口带 `FLAG_NOT_TOUCH_MODAL`，**不拦截**窗口之外的触摸：那股触摸直接落到对局页，底下的按钮照常触发；浮层由 `dispatchTouchEvent` 在这次触摸结束后（`super` 处理完、UP 之后）收起。于是"点浮层外"一次到位，不必点两下 —— 别再改回 touch-modal。
+- `ui/common/GameResultOverlay` —— 终局结果浮层，三人机/联机三处对局页共用。**终局结果不许再做成对局页布局里的横幅/占位 View**：那类节点 `gone → visible` 会把下方棋盘整块顶下去（棋盘位移）；而棋盘是 SurfaceView（`setZOrderOnTop`），普通 View 也盖不住它 —— 所以浮层只能挂在独立 Dialog 窗口上：卡片样式沿用原本的横幅（主色容器 + 12dp 圆角），浮动在**棋盘靠上部**（`BOARD_ANCHOR_RATIO = 0.15f`，卡片中心对齐到棋盘往下 15% 处）；窗口遮罩透明度置 0，棋盘既不位移也不被压暗。**内容只有一句结果文案**（如「电脑获胜」），不要副标题/比分/按钮；卡片宽度随文字自适应并居中，不占满屏（再开一局用对局页工具栏的「新开」）。
+- `ui/common/GameActivity` —— 三个对局页（两人/人机/联机）的基类。浮层窗口带 `FLAG_NOT_TOUCH_MODAL`，**不拦截**窗口之外的触摸：那股触摸直接落到对局页，底下的按钮照常触发；浮层由 `dispatchTouchEvent` 在这次触摸结束后（`super` 处理完、UP 之后）收起。于是"点浮层外"一次到位，不必点两下 —— 别再改回 touch-modal。**收起的前提是"按下时浮层就已经亮着"**（ACTION_DOWN 时用 `overlayShownBeforeTouch` 记 `isShowing`）：赢棋那一下也是一次 UP，落子→判胜→渲染→弹出提示是同一条链路，不加这个判断的话刚弹出的提示会被自己关掉（闪一下就没了，悔棋后再赢一次同样不弹）。
 
 ## 人机 AI（`domain/ai/`）
 
