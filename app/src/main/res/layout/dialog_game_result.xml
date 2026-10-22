@@ -7,6 +7,10 @@
   呈现位置由 GameResultOverlay 决定：挂在独立窗口上、浮动在棋盘中部偏上，
   不参与对局页布局，棋盘不会因为结果出现而位移。
   卡片底色的透明度也由 GameResultOverlay 叠加（底色取主题的 colorPrimaryContainer）。
+
+  半透明卡片不能用 elevation 阴影：阴影画在卡片底下，底色一透明就会从底下透上来，
+  边缘一圈比中间更透（看着像多了一块矩形）。所以这里用 M3 的描边式卡片：
+  阴影 0dp + 1dp 描边，边缘清晰且底色透明度均匀。
 -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -18,7 +22,9 @@
     android:layout_gravity="center"
     app:cardBackgroundColor="?attr/colorPrimaryContainer"
     app:cardCornerRadius="12dp"
-    app:cardElevation="6dp">
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOutlineVariant">
 
     <TextView
         android:id="@+id/result_title"
