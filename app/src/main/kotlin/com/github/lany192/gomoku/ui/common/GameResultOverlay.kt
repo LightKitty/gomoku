@@ -111,7 +111,8 @@ class GameResultOverlay(
     private fun applyCardAlpha(overlay: AppCompatDialog) {
         val card = overlay.findViewById<MaterialCardView>(R.id.result_card) ?: return
         val base = ContextCompat.getColor(activity, R.color.primary_container)
-        card.setCardBackgroundColor(ColorUtils.setAlphaComponent(base, CARD_BG_ALPHA))
+        // setAlphaComponent 的 alpha 是 0..255 的整数，这里把 0~1 的比例换算过去
+        card.setCardBackgroundColor(ColorUtils.setAlphaComponent(base, (CARD_BG_ALPHA * 255).toInt()))
     }
 
     /**
