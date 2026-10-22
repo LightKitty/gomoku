@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDialog
@@ -21,8 +22,11 @@ import com.github.lany192.gomoku.R
  * 所以浮层挂在 Dialog 窗口上、**浮动在棋盘中部偏上**，不参与对局页布局，棋盘纹丝不动。
  *
  * 内容只保留**一句结果文案**（如「电脑获胜」）：轻量简洁，不要副标题、比分与按钮。
- * 卡片宽度随文字自适应并居中，不占满屏；关闭只有一种方式——点浮层外任意区域，
- * 棋局保持终局态、棋盘完全裸露可复盘。窗口遮罩透明度置 0，棋盘不会被压暗。
+ * 卡片宽度随文字自适应并居中，不占满屏。窗口遮罩透明度置 0，棋盘不会被压暗。
+ *
+ * 交互：浮层窗口带 `FLAG_NOT_TOUCH_MODAL`，**不拦截**窗口之外的触摸 —— 那股触摸直接落到对局页，
+ * 底下的按钮照常触发；浮层则由对局页在这次触摸结束后收起（见 [GameActivity]）。
+ * 于是"点浮层外"既是关掉浮层，也是把这次点击交给下面的控件，一下一次到位。
  */
 class GameResultOverlay(
     private val activity: AppCompatActivity,
@@ -49,13 +53,15 @@ class GameResultOverlay(
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             // 遮罩透明：浮层弹出时棋盘不被压暗
             setDimAmount(0f)
+            // NOT_TOUCH_MODAL：窗口之外的触摸不发给浮层，而是直接落到对局页，
+            // 于是点按钮一次就生效（浮层由对局页在这次触摸结束后收起，见 GameActivity）
+            addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
         }
-        // 点浮层外任意区域即关闭，方便直接看当前棋局
-        overlay.setCanceledOnTouchOutside(true)
-        // 窗口铺满宽度、卡片只在中间一小块，卡片左右的透明区域也算"浮层外"：
-        // 给装饰层挂触摸兜底（卡片本身不可点击，事件会落到装饰层），
-        // 用 ACTION_UP 关闭，避免按下即关导致手势穿透到底下的棋盘误落子
+        // 窗口外的触摸不发给浮层，而是直接落到对局页（NOT_TOUCH_MODAL），
+        // 由对局页在这次触摸结束后收起浮层 —— 于是"点浮层外"既能关掉浮层，
+        // 底下的按钮也照常触发点击（见 GameActivity.dispatchTouchEvent）
         overlay.window?.decorView?.setOnTouchListener { _, event ->
+            // 卡片自己占着的那条横带：点卡片也算"点浮层外"，同样把浮层收掉
             if (event.action == MotionEvent.ACTION_UP) {
                 overlay.dismiss()
             }
@@ -91,7 +97,8 @@ class GameResultOverlay(
      */
     private fun placeOverBoard(overlay: AppCompatDialog) {
         val window = overlay.window ?: return
-        // 窗口仍铺满宽度（点窗口任意空白处都能关闭），但卡片自身宽度随文字自适应并居中
+        // 窗口铺满宽度、只占卡片那么高的一条横带：横带之外的触摸归对局页（NOT_TOUCH_MODAL），
+        // 横带之内由装饰层的触摸监听兜底；卡片自身宽度随文字自适应并居中
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         val boardLoc = IntArray(2)
         boardView.getLocationOnScreen(boardLoc)

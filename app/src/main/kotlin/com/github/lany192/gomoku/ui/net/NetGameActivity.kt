@@ -7,7 +7,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -21,6 +20,7 @@ import com.github.lany192.gomoku.data.net.LanGameClient
 import com.github.lany192.gomoku.databinding.GameNetBinding
 import com.github.lany192.gomoku.domain.model.GameMode
 import com.github.lany192.gomoku.domain.model.Side
+import com.github.lany192.gomoku.ui.common.GameActivity
 import com.github.lany192.gomoku.ui.common.GameResultOverlay
 import com.github.lany192.gomoku.ui.common.TurnCountdown
 import com.github.lany192.gomoku.ui.common.setupEdgeToEdge
@@ -32,14 +32,11 @@ import kotlinx.coroutines.launch
  *
  * 两种模式只差传输层实现，由 [EXTRA_BLUETOOTH] 决定注入 [LanGameClient] 还是 [BtGameClient]。
  */
-class NetGameActivity : AppCompatActivity() {
+class NetGameActivity : GameActivity() {
     private lateinit var binding: GameNetBinding
     private var waitDialog: AlertDialog? = null
     private var rollbackDialog: AlertDialog? = null
     private var drawDialog: AlertDialog? = null
-
-    /** 终局结果浮层：浮动在棋盘中部偏上，不占对局页布局，棋盘不会位移 */
-    private var resultOverlay: GameResultOverlay? = null
 
     /** 当前已展示的终局结果标识，避免状态重复渲染时反复弹面板 */
     private var resultKey: String? = null

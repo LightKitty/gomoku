@@ -3,7 +3,6 @@ package com.github.lany192.gomoku.ui.person
 import android.os.Bundle
 import android.view.View
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.core.content.ContextCompat
@@ -11,17 +10,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.github.lany192.gomoku.R
 import com.github.lany192.gomoku.databinding.GameFightBinding
 import com.github.lany192.gomoku.domain.model.Side
+import com.github.lany192.gomoku.ui.common.GameActivity
 import com.github.lany192.gomoku.ui.common.GameResultOverlay
 import com.github.lany192.gomoku.ui.common.TurnCountdown
 import com.github.lany192.gomoku.ui.common.setupEdgeToEdge
 import kotlinx.coroutines.launch
 
-class PersonGameActivity : AppCompatActivity() {
+class PersonGameActivity : GameActivity() {
     private lateinit var binding: GameFightBinding
     private val viewModel: PersonGameViewModel by viewModels()
-
-    /** 终局结果浮层：浮动在棋盘中部偏上，不占对局页布局，棋盘不会位移 */
-    private var resultOverlay: GameResultOverlay? = null
 
     /** 当前已展示的终局结果标识，避免状态重复渲染时反复弹面板 */
     private var resultKey: String? = null
